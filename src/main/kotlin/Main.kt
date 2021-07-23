@@ -4,6 +4,9 @@ import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
+import net.dv8tion.jda.api.events.message.MessageUpdateEvent
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
+import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent
 
 // https://discord.com/oauth2/authorize?client_id=865179659591483403&scope=bot+applications.commands
 
@@ -12,6 +15,22 @@ fun main(args: Array<String>) {
         .injectKTX()
         .setActivity(Activity.playing("Tetris"))
         .build()
+
+    jda.listener<MessageReactionAddEvent> { event ->
+        event.retrieveMessage().queue {
+            Messages.updateMessage(it)
+        }
+    }
+
+    jda.listener<MessageReactionRemoveEvent> { event ->
+        event.retrieveMessage().queue {
+            Messages.updateMessage(it)
+        }
+    }
+
+    jda.listener<MessageUpdateEvent> { event ->
+        Messages.updateMessage(event.message)
+    }
 
     jda.listener<GuildReadyEvent> {
         it.guild.updateCommands {

@@ -105,8 +105,6 @@ object Messages {
         val limit = lastIndexTimestamp(channel).toInstant()
         val now = Instant.now(Clock.systemUTC())
 
-        println("Indexing #${channel.name} from $limit to $now...")
-
         var updating = event == null
 
         return channel.iterableHistory.forEachRemainingAsync { message ->
@@ -219,6 +217,21 @@ object Messages {
                     "ORDER BY count DESC\n" +
                     "LIMIT 30\n"
         )
+
+    fun updateMessage(message: Message) {
+        ds.connection.use { connection ->
+            val statement = connection.prepareStatement(
+                "DELETE FROM messages WHERE id = ?;" +
+                        "DELETE FROM reactions WHERE message = ?;"
+            )
+            statement.setLong(1, message.idLong)
+            statement.setLong(2, message.idLong)
+            statement.execute()
+        }
+
+        insertMessages(listOf(message.toStoredMessage()))
+        insertReactions(message.reactions.map { it.toStoredReaction() })
+    }
 }
 
 data class Stats(val messages: Int, val reactions: Int)
