@@ -134,11 +134,19 @@ object Messages {
     fun stats(): Stats {
         ds.connection.use { connection ->
             val statement = connection.createStatement()
-            statement.execute("SELECT COUNT(*) FROM messages")
+            statement.execute("SELECT COUNT(*) FROM messages m")
 
-            val results = statement.resultSet
+            var results = statement.resultSet
             results.next()
-            return Stats(results.getInt(1))
+            val messages = results.getInt(1)
+
+            statement.execute("SELECT SUM(count) FROM reactions")
+
+            results = statement.resultSet
+            results.next()
+            val reactions = results.getInt(1)
+
+            return Stats(messages, reactions)
         }
     }
 
@@ -177,9 +185,21 @@ object Messages {
 
     fun userMessagesLeaderboard() =
         getLeaderboard("SELECT author, COUNT(*) as count FROM messages GROUP BY author ORDER BY count DESC LIMIT 30")
+
+    // TODO: This shouldn't rely on the reaction name, rather on a user-set emote.
+    fun userUpvoteLeaderboard() =
+        getLeaderboard(
+            "SELECT m.author, SUM(r.count) AS count\n" +
+                    "FROM messages m, reactions r\n" +
+                    "WHERE m.id = r.message\n" +
+                    "  AND r.name = 'upvote'\n" +
+                    "GROUP BY m.author\n" +
+                    "ORDER BY count DESC\n" +
+                    "LIMIT 30\n"
+        )
 }
 
-data class Stats(val messages: Int)
+data class Stats(val messages: Int, val reactions: Int)
 
 data class StoredMessage(
     val id: Long,

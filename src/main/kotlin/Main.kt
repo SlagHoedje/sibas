@@ -28,6 +28,7 @@ fun main(args: Array<String>) {
                         },
                         SubcommandGroup("user", "User related leaderboards") {
                             subcommand("messages", "Show a leaderboard of users with the most messages")
+                            subcommand("upvotes", "Show a leaderboard of users with the most upvotes")
                         }
                     )
                 },
@@ -41,7 +42,8 @@ fun main(args: Array<String>) {
         val stats = Messages.stats()
 
         it.replyEmbeds(Embed {
-            field(name = "Messages indexed", value = stats.messages.toString())
+            field(name = "Messages", value = stats.messages.toString())
+            field(name = "Reactions", value = stats.reactions.toString())
         }).queue()
     }
 
@@ -97,6 +99,17 @@ fun main(args: Array<String>) {
                             title = "User message leaderboard"
                             description = leaderboard.joinToString("\n") {
                                 "<@${it.first}>: ${it.second} messages"
+                            }
+                        })).queue()
+                }
+                "upvotes" -> {
+                    val leaderboard = Messages.userUpvoteLeaderboard()
+
+                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
+                        .and(event.hook.editOriginalEmbeds(Embed {
+                            title = "User upvote leaderboard"
+                            description = leaderboard.joinToString("\n") {
+                                "<@${it.first}>: ${it.second} upvotes"
                             }
                         })).queue()
                 }
