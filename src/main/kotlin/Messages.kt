@@ -8,6 +8,8 @@ import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.entities.MessageReaction
 import net.dv8tion.jda.api.entities.MessageType
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
+import java.sql.ResultSet
+import java.sql.Statement
 import java.sql.Timestamp
 import java.time.*
 import java.util.concurrent.CompletableFuture
@@ -154,17 +156,12 @@ object Messages {
     fun stats(): Stats {
         ds.connection.use { connection ->
             val statement = connection.createStatement()
-            statement.execute("SELECT COUNT(*) FROM messages m")
 
-            var results = statement.resultSet
-            results.next()
-            val messages = results.getInt(1)
+            statement.execute("SELECT COUNT(*) FROM messages m")
+            val messages = statement.nextResult()?.getInt(1) ?: -1
 
             statement.execute("SELECT SUM(count) FROM reactions")
-
-            results = statement.resultSet
-            results.next()
-            val reactions = results.getInt(1)
+            val reactions = statement.nextResult()?.getInt(1) ?: -1
 
             return Stats(messages, reactions)
         }
@@ -176,10 +173,10 @@ object Messages {
             statement.setLong(1, channel.idLong)
             statement.execute()
 
-            val results = statement.resultSet
-            results.next()
-
-            return results.getTimestamp(1)?.toLocalDateTime()?.atOffset(ZoneOffset.UTC)
+            return statement.nextResult()
+                ?.getTimestamp(1)
+                ?.toLocalDateTime()
+                ?.atOffset(ZoneOffset.UTC)
                 ?: OffsetDateTime.MIN
         }
     }
@@ -189,11 +186,9 @@ object Messages {
             val statement = connection.createStatement()
             statement.execute(sql)
 
-            val results = statement.resultSet
-
             val leaderboard = mutableListOf<Pair<Long, Int>>()
-            while (results.next()) {
-                leaderboard.add(results.getLong(1) to results.getInt(2))
+            statement.forEachResult {
+                leaderboard.add(it.getLong(1) to it.getInt(2))
             }
 
             return leaderboard
@@ -265,3 +260,15 @@ fun MessageReaction.toStoredReaction() = StoredReaction(
     reactionEmote.idLong,
     count
 )
+
+fun Statement.nextResult() = if (!resultSet.next()) {
+    null
+} else {
+    resultSet
+}
+
+fun Statement.forEachResult(consumer: (ResultSet) -> Unit) {
+    while (resultSet.next()) {
+        consumer(resultSet)
+    }
+}
