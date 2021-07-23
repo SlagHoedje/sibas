@@ -1,4 +1,8 @@
 import com.zaxxer.hikari.HikariDataSource
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.future.future
+import kotlinx.coroutines.sync.Mutex
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.entities.MessageReaction
@@ -9,6 +13,8 @@ import java.time.*
 import java.util.concurrent.CompletableFuture
 
 object Messages {
+    private val locks = mutableMapOf<Long, Mutex>()
+
     private val ds = HikariDataSource().also {
         it.jdbcUrl = System.getenv("DB")
             ?: throw RuntimeException("Environment variable DB should contain the jdbc database URL")
@@ -77,7 +83,21 @@ object Messages {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun index(channel: MessageChannel, event: SlashCommandEvent? = null): CompletableFuture<Int> {
+        val lock = locks.getOrPut(channel.idLong) { Mutex() }
+
+        if (!lock.tryLock()) {
+            event?.hook?.editOriginal("Indexing <#${channel.id}>... _(waiting for another thread to finish)_")?.queue()
+
+            return GlobalScope.future {
+                lock.lock()
+                lock.unlock()
+
+                0
+            }
+        }
+
         var count = 0
         val messages = mutableListOf<StoredMessage>()
         val reactions = mutableListOf<StoredReaction>()
@@ -126,6 +146,8 @@ object Messages {
 
             insertMessages(messages)
             insertReactions(reactions)
+
+            lock.unlock()
 
             count
         }

@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "1.5.0"
+    kotlin("jvm") version "1.5.20"
 }
 
 group = "nl.chrisb"
@@ -13,6 +13,8 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib"))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.5.1")
 
     implementation("net.dv8tion:JDA:4.3.0_277")
     implementation("com.github.minndevelopment:jda-ktx:ea0a1b2")
