@@ -1,6 +1,7 @@
 import com.zaxxer.hikari.HikariDataSource
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageChannel
+import net.dv8tion.jda.api.entities.MessageReaction
 import net.dv8tion.jda.api.entities.MessageType
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import java.sql.Timestamp
@@ -31,10 +32,19 @@ object Messages {
                         "PRIMARY KEY (id)" +
                         ")"
             )
+            statement.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS reactions(" +
+                        "message BIGINT NOT NULL, " +
+                        "name TEXT NOT NULL, " +
+                        "id BIGINT NOT NULL, " +
+                        "count INT NOT NULL, " +
+                        "PRIMARY KEY (message, id)" +
+                        ")"
+            )
         }
     }
 
-    fun insert(messages: List<StoredMessage>) {
+    fun insertMessages(messages: List<StoredMessage>) {
         ds.connection.use { connection ->
             val statement =
                 connection.prepareStatement("INSERT INTO messages VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING")
@@ -51,9 +61,26 @@ object Messages {
         }
     }
 
+    fun insertReactions(reactions: List<StoredReaction>) {
+        ds.connection.use { connection ->
+            val statement =
+                connection.prepareStatement("INSERT INTO reactions VALUES (?, ?, ?, ?) ON CONFLICT (message, id) DO NOTHING")
+            for (reaction in reactions) {
+                statement.setLong(1, reaction.message)
+                statement.setString(2, reaction.name)
+                statement.setLong(3, reaction.id)
+                statement.setInt(4, reaction.count)
+                statement.addBatch()
+            }
+
+            statement.executeBatch()
+        }
+    }
+
     fun index(channel: MessageChannel, event: SlashCommandEvent? = null): CompletableFuture<Int> {
         var count = 0
         val messages = mutableListOf<StoredMessage>()
+        val reactions = mutableListOf<StoredReaction>()
 
         val limit = lastIndexTimestamp(channel).toInstant()
         val now = Instant.now(Clock.systemUTC())
@@ -74,11 +101,15 @@ object Messages {
             }
 
             messages.add(message.toStoredMessage())
+            reactions.addAll(message.reactions.map { it.toStoredReaction() })
 
             if (messages.size >= 500) {
                 count += messages.size
-                insert(messages)
+
+                insertMessages(messages)
+                insertReactions(reactions)
                 messages.clear()
+                reactions.clear()
 
                 if (!updating) {
                     updating = true
@@ -92,7 +123,9 @@ object Messages {
             true
         }.thenApply {
             count += messages.size
-            insert(messages)
+
+            insertMessages(messages)
+            insertReactions(reactions)
 
             count
         }
@@ -146,6 +179,8 @@ object Messages {
         getLeaderboard("SELECT author, COUNT(*) as count FROM messages GROUP BY author ORDER BY count DESC LIMIT 30")
 }
 
+data class Stats(val messages: Int)
+
 data class StoredMessage(
     val id: Long,
     val author: Long,
@@ -154,12 +189,24 @@ data class StoredMessage(
     val contents: String?
 )
 
-data class Stats(val messages: Int)
-
 fun Message.toStoredMessage() = StoredMessage(
     idLong,
     author.idLong,
     channel.idLong,
     Timestamp.valueOf(timeCreated.atZoneSimilarLocal(ZoneId.of("UTC")).toLocalDateTime()),
     if (type == MessageType.DEFAULT) contentRaw else null
+)
+
+data class StoredReaction(
+    val message: Long,
+    val name: String,
+    val id: Long,
+    val count: Int,
+)
+
+fun MessageReaction.toStoredReaction() = StoredReaction(
+    messageIdLong,
+    reactionEmote.name,
+    reactionEmote.idLong,
+    count
 )
