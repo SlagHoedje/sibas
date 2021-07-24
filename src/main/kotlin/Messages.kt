@@ -198,6 +198,17 @@ object Messages {
     fun channelMessagesLeaderboard() =
         getLeaderboard("SELECT channel, COUNT(*) as count FROM messages GROUP BY channel ORDER BY count DESC")
 
+    fun channelUpvotesLeaderboard() =
+        getLeaderboard(
+            "SELECT m.channel, SUM(r.count) AS count " +
+                    "FROM messages m, reactions r " +
+                    "WHERE m.id = r.message " +
+                    "  AND r.name = 'upvote' " +
+                    "GROUP BY m.channel " +
+                    "ORDER BY count DESC " +
+                    "LIMIT 30"
+        )
+
     fun userMessagesLeaderboard() =
         getLeaderboard("SELECT author, COUNT(*) as count FROM messages GROUP BY author ORDER BY count DESC LIMIT 30")
 

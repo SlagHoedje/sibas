@@ -45,6 +45,7 @@ fun main(args: Array<String>) {
                     addSubcommandGroups(
                         SubcommandGroup("channel", "Channel related leaderboards") {
                             subcommand("messages", "Show a leaderboard of channels with the most messages")
+                            subcommand("upvotes", "Show a leaderboard of channels with the most upvotes")
                         },
                         SubcommandGroup("user", "User related leaderboards") {
                             subcommand("messages", "Show a leaderboard of users with the most messages")
@@ -107,9 +108,20 @@ fun main(args: Array<String>) {
 
                     event.hook.editOriginal("Indexed all channels. _($count messages)_")
                         .and(event.hook.editOriginalEmbeds(Embed {
-                            title = "Channel message leaderboard"
+                            title = "Most messages in channels"
                             description = leaderboard.joinToString("\n") {
                                 "<#${it.first}>: ${it.second} messages"
+                            }
+                        })).queue()
+                }
+                "upvotes" -> {
+                    val leaderboard = Messages.channelUpvotesLeaderboard()
+
+                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
+                        .and(event.hook.editOriginalEmbeds(Embed {
+                            title = "Most upvoted channels"
+                            description = leaderboard.joinToString("\n") {
+                                "<#${it.first}>: ${it.second} upvotes"
                             }
                         })).queue()
                 }
@@ -121,7 +133,7 @@ fun main(args: Array<String>) {
 
                     event.hook.editOriginal("Indexed all channels. _($count messages)_")
                         .and(event.hook.editOriginalEmbeds(Embed {
-                            title = "User message leaderboard"
+                            title = "Most messages by users"
                             description = leaderboard.joinToString("\n") {
                                 "<@${it.first}>: ${it.second} messages"
                             }
@@ -132,7 +144,7 @@ fun main(args: Array<String>) {
 
                     event.hook.editOriginal("Indexed all channels. _($count messages)_")
                         .and(event.hook.editOriginalEmbeds(Embed {
-                            title = "User upvote leaderboard"
+                            title = "Most upvoted users"
                             description = leaderboard.joinToString("\n") {
                                 "<@${it.first}>: ${it.second} upvotes"
                             }
