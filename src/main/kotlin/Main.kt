@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.events.guild.GuildReadyEvent
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent
+import java.time.ZoneOffset
 
 // https://discord.com/oauth2/authorize?client_id=865179659591483403&scope=bot+applications.commands
 
@@ -48,6 +49,11 @@ fun main(args: Array<String>) {
                         SubcommandGroup("user", "User related leaderboards") {
                             subcommand("messages", "Show a leaderboard of users with the most messages")
                             subcommand("upvotes", "Show a leaderboard of users with the most upvotes")
+                        },
+                        SubcommandGroup("message", "Message related leaderboards") {
+                            subcommand("upvotes", "Show a leaderboard of messages with the most upvotes") {
+                                option<MessageChannel>("channel", "Channel for the messages", required = false)
+                            }
                         }
                     )
                 },
@@ -129,6 +135,39 @@ fun main(args: Array<String>) {
                             title = "User upvote leaderboard"
                             description = leaderboard.joinToString("\n") {
                                 "<@${it.first}>: ${it.second} upvotes"
+                            }
+                        })).queue()
+                }
+                else -> event.reply("**ERROR!** Invalid subcommand.").queue()
+            }
+            "message" -> when (event.subcommandName) {
+                "upvotes" -> {
+                    val channel = event.getOption("channel")?.asMessageChannel
+                    val leaderboard = Messages.messageUpvoteLeaderboard(channel)
+
+                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
+                        .and(event.hook.editOriginalEmbeds(Embed {
+                            title = "Most upvoted messages${if (channel != null) " in #${channel.name}" else ""}"
+                            description = leaderboard.withIndex().joinToString("\n") { (i, spot) ->
+                                val message = spot.first
+                                val upvotes = spot.second
+
+                                val jdaMessage = (event.guild?.getGuildChannelById(message.channel) as? MessageChannel)
+                                    ?.retrieveMessageById(message.id)
+                                    ?.complete()
+
+                                var out = "**${i + 1}.** " +
+                                        (if (jdaMessage != null) "[Link](${jdaMessage.jumpUrl}) - " else "") +
+                                        "<t:${message.timestamp.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>, " +
+                                        "<@${message.author}>" +
+                                        (if (channel == null) " in <#${message.channel}>" else "") +
+                                        " with $upvotes upvotes\n"
+
+                                message.contents?.let {
+                                    out += "> " + it.lines().joinToString("\n> ") + "\n"
+                                }
+
+                                out
                             }
                         })).queue()
                 }

@@ -213,6 +213,58 @@ object Messages {
                     "LIMIT 30\n"
         )
 
+    fun messageUpvoteLeaderboard(channel: MessageChannel? = null): List<Pair<StoredMessage, Int>> {
+        ds.connection.use { connection ->
+            val statement = if (channel != null) {
+                val statement = connection.prepareStatement(
+                    "SELECT m.*, MAX(r.count) as count\n" +
+                            "FROM messages m,\n" +
+                            "     reactions r\n" +
+                            "WHERE m.id = r.message\n" +
+                            "  AND r.name = 'upvote'\n" +
+                            "  AND m.channel = ?\n" +
+                            "GROUP BY m.id\n" +
+                            "ORDER BY count DESC\n" +
+                            "LIMIT 10;\n"
+                )
+
+                statement.setLong(1, channel.idLong)
+                statement.execute()
+
+                statement
+            } else {
+                val statement = connection.createStatement()
+                statement.execute(
+                    "SELECT m.*, MAX(r.count) as count\n" +
+                            "FROM messages m,\n" +
+                            "     reactions r\n" +
+                            "WHERE m.id = r.message\n" +
+                            "  AND r.name = 'upvote'\n" +
+                            "GROUP BY m.id\n" +
+                            "ORDER BY count DESC\n" +
+                            "LIMIT 10;\n"
+                )
+
+                statement
+            }
+
+            val leaderboard = mutableListOf<Pair<StoredMessage, Int>>()
+            statement.forEachResult {
+                val message = StoredMessage(
+                    it.getLong(1),
+                    it.getLong(2),
+                    it.getLong(3),
+                    it.getTimestamp(4),
+                    it.getString(5)
+                )
+
+                leaderboard.add(message to it.getInt(6))
+            }
+
+            return leaderboard
+        }
+    }
+
     fun updateMessage(message: Message) {
         ds.connection.use { connection ->
             val statement = connection.prepareStatement(
