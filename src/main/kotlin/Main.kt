@@ -1,9 +1,11 @@
 import dev.minn.jda.ktx.*
 import dev.minn.jda.ktx.interactions.*
+import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
+import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent
@@ -64,7 +66,7 @@ fun main(args: Array<String>) {
         }
     }
 
-    jda.onCommand("stats") {
+    jda.onCommandHandleErrors("stats") {
         val stats = Messages.stats()
 
         it.replyEmbeds(Embed {
@@ -73,7 +75,7 @@ fun main(args: Array<String>) {
         }).queue()
     }
 
-    jda.onCommand("index") { event ->
+    jda.onCommandHandleErrors("index") { event ->
         val channel = event.getOptionsByName("channel")[0].asMessageChannel!!
         event.reply("Indexing <#${channel.id}>...").queue()
 
@@ -82,7 +84,7 @@ fun main(args: Array<String>) {
         }
     }
 
-    jda.onCommand("indexall") { event ->
+    jda.onCommandHandleErrors("indexall") { event ->
         event.reply("Indexing all channels...").queue()
 
         var count = 0
@@ -93,7 +95,7 @@ fun main(args: Array<String>) {
         event.hook.editOriginal("**DONE!** Indexed all channels. _($count messages)_").queue()
     }
 
-    jda.onCommand("leaderboard") { event ->
+    jda.onCommandHandleErrors("leaderboard") { event ->
         event.reply("Indexing all channels...").queue()
 
         var count = 0
@@ -190,4 +192,15 @@ fun main(args: Array<String>) {
     }
 
     Messages
+}
+
+fun JDA.onCommandHandleErrors(name: String, consumer: suspend CoroutineEventListener.(SlashCommandEvent) -> Unit) {
+    onCommand(name) {
+        try {
+            consumer(it)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            it.hook.editOriginal("**ERROR!** Internal error: ${e.message}").queue()
+        }
+    }
 }
