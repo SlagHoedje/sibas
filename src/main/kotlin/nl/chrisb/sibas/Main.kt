@@ -13,8 +13,6 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent
 import java.time.ZoneOffset
 
-// https://discord.com/oauth2/authorize?client_id=865179659591483403&scope=bot+applications.commands
-
 fun main() {
     val jda = JDABuilder.createLight(
         System.getenv("DISCORD_TOKEN")
