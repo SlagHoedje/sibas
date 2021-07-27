@@ -5,6 +5,7 @@ import dev.minn.jda.ktx.interactions.*
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
+import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
@@ -47,6 +48,8 @@ fun main() {
                     option<MessageChannel>("channel", "Channel to index", required = true)
                 },
                 Command("indexall", "Index messages of all channels"),
+                Command("cleardb", "Clear the database"),
+                Command("reindexall", "Clear the database and reindex all channels"),
                 Command("stats", "Show bot stats"),
                 Command("leaderboard", "Show various leaderboards") {
                     addSubcommandGroups(
@@ -100,6 +103,37 @@ fun main() {
         event.hook.editOriginal("**DONE!** Indexed all channels. _($count messages)_").queue()
     }
 
+    jda.onCommandHandleErrors("cleardb") { event ->
+        if (event.member?.isAdmin() != true) {
+            event.reply("**ERROR!** You are not allowed to do this.")
+                .setEphemeral(true)
+                .queue()
+        } else {
+            event.reply("Clearing the database...").queue()
+            Messages.clearDB()
+            event.hook.editOriginal("**DONE!** Cleared the database.").queue()
+        }
+    }
+
+    jda.onCommandHandleErrors("reindexall") { event ->
+        if (event.member?.isAdmin() != true) {
+            event.reply("**ERROR!** You are not allowed to do this.")
+                .setEphemeral(true)
+                .queue()
+        } else {
+            event.reply("Clearing the database...").queue()
+            Messages.clearDB()
+            event.hook.editOriginal("Indexing all channels...").queue()
+
+            var count = 0
+            event.guild?.textChannels?.forEach {
+                count += Messages.index(it, event).await()
+            }
+
+            event.hook.editOriginal("**DONE!** Indexed all channels. _($count messages)_").queue()
+        }
+    }
+
     jda.onCommandHandleErrors("leaderboard") { event ->
         event.reply("Indexing all channels...").queue()
 
@@ -132,7 +166,6 @@ fun main() {
                             }
                         })).queue()
                 }
-                else -> event.reply("**ERROR!** Invalid subcommand.").queue()
             }
             "user" -> when (event.subcommandName) {
                 "messages" -> {
@@ -157,7 +190,6 @@ fun main() {
                             }
                         })).queue()
                 }
-                else -> event.reply("**ERROR!** Invalid subcommand.").queue()
             }
             "message" -> when (event.subcommandName) {
                 "upvotes" -> {
@@ -190,14 +222,14 @@ fun main() {
                             }
                         })).queue()
                 }
-                else -> event.reply("**ERROR!** Invalid subcommand.").queue()
             }
-            else -> event.reply("**ERROR!** Invalid subcommand group.").queue()
         }
     }
 
     Messages
 }
+
+fun Member.isAdmin() = id == "120593086844895234" || roles.any { it.name == "Staff" }
 
 fun JDA.onCommandHandleErrors(name: String, consumer: suspend CoroutineEventListener.(SlashCommandEvent) -> Unit) {
     onCommand(name) {

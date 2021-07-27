@@ -54,6 +54,16 @@ object Messages {
         }
     }
 
+    fun clearDB() {
+        ds.connection.use { connection ->
+            val statement = connection.createStatement()
+            statement.execute(
+                "DELETE FROM messages WHERE true;" +
+                        "DELETE FROM reactions WHERE true;"
+            )
+        }
+    }
+
     fun insertMessages(messages: List<StoredMessage>) {
         ds.connection.use { connection ->
             val statement =
