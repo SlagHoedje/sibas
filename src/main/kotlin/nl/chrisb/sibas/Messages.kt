@@ -1,3 +1,5 @@
+package nl.chrisb.sibas
+
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope

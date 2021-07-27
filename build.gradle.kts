@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.5.20"
+    id("application")
 }
 
 group = "nl.chrisb"
@@ -21,4 +22,8 @@ dependencies {
 
     implementation("com.zaxxer:HikariCP:2.3.2")
     implementation("org.postgresql:postgresql:42.2.23")
+}
+
+application {
+    mainClass.set("nl.chrisb.sibas.MainKt")
 }

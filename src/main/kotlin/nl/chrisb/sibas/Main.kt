@@ -1,3 +1,5 @@
+package nl.chrisb.sibas
+
 import dev.minn.jda.ktx.*
 import dev.minn.jda.ktx.interactions.*
 import net.dv8tion.jda.api.JDA
