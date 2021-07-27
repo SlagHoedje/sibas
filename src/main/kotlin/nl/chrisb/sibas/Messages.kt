@@ -31,6 +31,10 @@ object Messages {
     }
 
     init {
+        initDB()
+    }
+
+    fun initDB() {
         ds.connection.use { connection ->
             val statement = connection.createStatement()
             statement.executeUpdate(
@@ -48,7 +52,7 @@ object Messages {
                 "CREATE TABLE IF NOT EXISTS reactions(" +
                         "message BIGINT NOT NULL, " +
                         "name TEXT NOT NULL, " +
-                        "id BIGINT, " +
+                        "id BIGINT NOT NULL, " +
                         "count INT NOT NULL, " +
                         "PRIMARY KEY (message, id)" +
                         ")"
@@ -68,11 +72,13 @@ object Messages {
         ds.connection.use { connection ->
             val statement = connection.createStatement()
             statement.execute(
-                "DELETE FROM messages WHERE true;" +
-                        "DELETE FROM reactions WHERE true;" +
-                        "DELETE FROM last_update WHERE true;"
+                "DROP TABLE IF EXISTS messages;" +
+                        "DROP TABLE IF EXISTS reactions;" +
+                        "DROP TABLE IF EXISTS last_update;"
             )
         }
+
+        initDB()
     }
 
     fun insertMessages(messages: List<StoredMessage>) {
@@ -99,13 +105,7 @@ object Messages {
             for (reaction in reactions) {
                 statement.setLong(1, reaction.message)
                 statement.setString(2, reaction.name)
-
-                if (reaction.id != null) {
-                    statement.setLong(3, reaction.id)
-                } else {
-                    statement.setNull(3, Types.BIGINT)
-                }
-
+                statement.setLong(3, reaction.id ?: -1)
                 statement.setInt(4, reaction.count)
                 statement.addBatch()
             }
