@@ -1,6 +1,5 @@
 package nl.chrisb.sibas
 
-import dev.minn.jda.ktx.await
 import dev.minn.jda.ktx.interactions.Subcommand
 import dev.minn.jda.ktx.interactions.SubcommandGroup
 import dev.minn.jda.ktx.interactions.command
@@ -115,7 +114,7 @@ class CommandContext(val event: SlashCommandEvent) {
 
         var count = 0
         event.guild?.textChannels?.forEach {
-            count += Messages.index(it, event).await()
+            count += Messages.index(it, event)
         }
 
         return count

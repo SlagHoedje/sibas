@@ -2,8 +2,6 @@ package nl.chrisb.sibas
 
 import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.future.future
 import kotlinx.coroutines.sync.Mutex
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageChannel
@@ -13,9 +11,7 @@ import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import java.sql.ResultSet
 import java.sql.Statement
 import java.sql.Timestamp
-import java.sql.Types
 import java.time.*
-import java.util.concurrent.CompletableFuture
 
 object Messages {
     private val locks = mutableMapOf<Long, Mutex>()
@@ -115,18 +111,16 @@ object Messages {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun index(channel: MessageChannel, event: SlashCommandEvent? = null): CompletableFuture<Int> {
+    suspend fun index(channel: MessageChannel, event: SlashCommandEvent? = null): Int {
         val lock = locks.getOrPut(channel.idLong) { Mutex() }
 
         if (!lock.tryLock()) {
             event?.hook?.editOriginal("Indexing <#${channel.id}>... _(waiting for another thread to finish)_")?.queue()
 
-            return GlobalScope.future {
-                lock.lock()
-                lock.unlock()
+            lock.lock()
+            lock.unlock()
 
-                0
-            }
+            return 0
         }
 
         try {
@@ -139,54 +133,64 @@ object Messages {
 
             var updating = event == null
 
-            return channel.iterableHistory.forEachRemainingAsync { message ->
-                val timeUTC = message.timeCreated.atZoneSimilarLocal(ZoneId.of("UTC")).toInstant()
+            var history = listOf(
+                channel.retrieveMessageById(channel.latestMessageId).complete(),
+                *channel.getHistoryBefore(channel.latestMessageId, 100).complete().retrievedHistory.toTypedArray()
+            )
 
-                if (timeUTC.isAfter(now)) {
-                    return@forEachRemainingAsync true
+            while (true) {
+                for (message in history) {
+                    val timeUTC = message.timeCreated.atZoneSimilarLocal(ZoneId.of("UTC")).toInstant()
+
+                    if (timeUTC.isAfter(now)) {
+                        continue
+                    }
+
+                    if (!timeUTC.isAfter(limit)) {
+                        history = listOf()
+                        break
+                    }
+
+                    messages.add(message.toStoredMessage())
+                    reactions.addAll(message.reactions.map { it.toStoredReaction() })
+
+                    if (messages.size >= 500) {
+                        count += messages.size
+
+                        insertMessages(messages)
+                        insertReactions(reactions)
+                        messages.clear()
+                        reactions.clear()
+
+                        if (!updating) {
+                            updating = true
+                            event!!.hook.editOriginal("Indexing <#${channel.id}>... _($count messages)_")
+                                .queue {
+                                    updating = false
+                                }
+                        }
+                    }
                 }
 
-                if (!timeUTC.isAfter(limit)) {
-                    return@forEachRemainingAsync false
-                }
-
-                messages.add(message.toStoredMessage())
-                reactions.addAll(message.reactions.map { it.toStoredReaction() })
-
-                if (messages.size >= 500) {
+                if (history.size < 100) {
                     count += messages.size
 
                     insertMessages(messages)
                     insertReactions(reactions)
-                    messages.clear()
-                    reactions.clear()
 
-                    if (!updating) {
-                        updating = true
-                        event!!.hook.editOriginal("Indexing <#${channel.id}>... _($count messages)_")
-                            .queue {
-                                updating = false
-                            }
-                    }
+                    setLastIndexTimestamp(channel, now.atOffset(ZoneOffset.UTC))
+
+                    lock.unlock()
+
+                    return count
                 }
 
-                true
-            }.thenApply {
-                count += messages.size
-
-                insertMessages(messages)
-                insertReactions(reactions)
-
-                setLastIndexTimestamp(channel, now.atOffset(ZoneOffset.UTC))
-
-                lock.unlock()
-
-                count
+                history = channel.getHistoryBefore(history.last().id, 100).complete().retrievedHistory
             }
         } catch (e: Throwable) {
             println("Error while indexing #${channel.name}: ${e.message}")
             lock.unlock()
-            return CompletableFuture.completedFuture(0)
+            return 0
         }
     }
 

@@ -46,9 +46,8 @@ fun main() {
                 val channel = messageChannel("channel") ?: fail("No channel specified")
                 message("Indexing <#${channel.id}>...")
 
-                Messages.index(channel, event).thenAccept {
-                    message("**DONE!** Indexed <#${channel.id}>. _($it messages)_")
-                }
+                val count = Messages.index(channel, event)
+                message("**DONE!** Indexed <#${channel.id}>. _($count messages)_")
             }
         }
 
