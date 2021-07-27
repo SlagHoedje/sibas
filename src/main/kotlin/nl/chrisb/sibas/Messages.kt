@@ -42,6 +42,7 @@ object Messages {
                         "PRIMARY KEY (id)" +
                         ")"
             )
+
             statement.executeUpdate(
                 "CREATE TABLE IF NOT EXISTS reactions(" +
                         "message BIGINT NOT NULL, " +
@@ -49,6 +50,14 @@ object Messages {
                         "id BIGINT NOT NULL, " +
                         "count INT NOT NULL, " +
                         "PRIMARY KEY (message, id)" +
+                        ")"
+            )
+
+            statement.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS last_update(" +
+                        "channel BIGINT NOT NULL, " +
+                        "timestamp TIMESTAMP NOT NULL, " +
+                        "PRIMARY KEY (channel)" +
                         ")"
             )
         }
@@ -160,6 +169,8 @@ object Messages {
                 insertMessages(messages)
                 insertReactions(reactions)
 
+                setLastIndexTimestamp(channel, now.atOffset(ZoneOffset.UTC))
+
                 lock.unlock()
 
                 count
@@ -185,9 +196,25 @@ object Messages {
         }
     }
 
+    fun setLastIndexTimestamp(channel: MessageChannel, timestamp: OffsetDateTime) {
+        ds.connection.use { connection ->
+            val statement = connection.prepareStatement(
+                "INSERT INTO last_update VALUES (?, ?) ON CONFLICT (channel) DO UPDATE SET timestamp = ?"
+            )
+
+            val timestamp = Timestamp.valueOf(timestamp.atZoneSimilarLocal(ZoneId.of("UTC")).toLocalDateTime())
+
+            statement.setLong(1, channel.idLong)
+            statement.setTimestamp(2, timestamp)
+            statement.setTimestamp(3, timestamp)
+
+            statement.execute()
+        }
+    }
+
     fun lastIndexTimestamp(channel: MessageChannel): OffsetDateTime {
         ds.connection.use { connection ->
-            val statement = connection.prepareStatement("SELECT MAX(timestamp) FROM messages WHERE channel = ?")
+            val statement = connection.prepareStatement("SELECT timestamp FROM last_update WHERE channel = ?")
             statement.setLong(1, channel.idLong)
             statement.execute()
 
