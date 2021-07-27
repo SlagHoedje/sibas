@@ -7,9 +7,13 @@ import dev.minn.jda.ktx.interactions.updateCommands
 import dev.minn.jda.ktx.listener
 import dev.minn.jda.ktx.onCommand
 import net.dv8tion.jda.api.JDA
+import net.dv8tion.jda.api.entities.Message
+import net.dv8tion.jda.api.entities.MessageEmbed
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import net.dv8tion.jda.api.interactions.commands.build.OptionData
+import java.time.Duration
+import java.time.Instant
 
 fun JDA.commands(builder: CommandsBuilder.() -> Unit) {
     val commandsBuilder = CommandsBuilder().apply(builder)
@@ -109,6 +113,9 @@ class Command(val name: String, val description: String) {
 }
 
 class CommandContext(val event: SlashCommandEvent) {
+    private var replyTime = Instant.now()
+    private var secondMessage: Message? = null
+
     suspend fun preIndex(): Int {
         message("Indexing all channels...")
 
@@ -136,9 +143,37 @@ class CommandContext(val event: SlashCommandEvent) {
 
     fun message(message: String) {
         if (event.interaction.isAcknowledged) {
-            event.hook.editOriginal(message).queue()
+            if (Duration.between(replyTime, Instant.now()).toMinutes() >= 14) {
+                if (secondMessage == null) {
+                    event.channel.sendMessage(message).queue {
+                        secondMessage = it
+                    }
+                } else {
+                    secondMessage!!.editMessage(message).queue()
+                }
+            } else {
+                event.hook.editOriginal(message).queue()
+            }
         } else {
             event.reply(message).queue()
+        }
+    }
+
+    fun embed(embed: MessageEmbed) {
+        if (Duration.between(replyTime, Instant.now()).toMinutes() >= 14) {
+            if (secondMessage == null) {
+                event.channel.sendMessage(embed).queue {
+                    secondMessage = it
+                }
+            } else {
+                secondMessage!!.editMessage(embed).queue()
+            }
+        } else {
+            if (event.interaction.isAcknowledged) {
+                event.hook.editOriginalEmbeds(embed).queue()
+            } else {
+                event.replyEmbeds(embed).queue()
+            }
         }
     }
 

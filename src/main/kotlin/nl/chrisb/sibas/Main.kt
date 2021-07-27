@@ -63,10 +63,10 @@ fun main() {
             executor {
                 val stats = Messages.stats()
 
-                event.replyEmbeds(Embed {
+                embed(Embed {
                     field(name = "Messages", value = stats.messages.toString())
                     field(name = "Reactions", value = stats.reactions.toString())
-                }).queue()
+                })
             }
         }
 
@@ -106,14 +106,13 @@ fun main() {
 
                     val leaderboard = Messages.channelMessagesLeaderboard()
 
-                    event.hook.editOriginal("Indexed all channels. _($count messages)_").and(
-                        event.hook.editOriginalEmbeds(Embed {
-                            title = "Most messages in channels"
-                            description = leaderboard.joinToString("\n") {
-                                "<#${it.first}>: ${it.second} messages"
-                            }
-                        })
-                    ).queue()
+                    message("Indexed all channels. _($count messages)_")
+                    embed(Embed {
+                        title = "Most messages in channels"
+                        description = leaderboard.joinToString("\n") {
+                            "<#${it.first}>: ${it.second} messages"
+                        }
+                    })
                 }
             }
 
@@ -123,13 +122,13 @@ fun main() {
 
                     val leaderboard = Messages.channelUpvotesLeaderboard()
 
-                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
-                        .and(event.hook.editOriginalEmbeds(Embed {
-                            title = "Most upvoted channels"
-                            description = leaderboard.joinToString("\n") {
-                                "<#${it.first}>: ${it.second} upvotes"
-                            }
-                        })).queue()
+                    message("Indexed all channels. _($count messages)_")
+                    embed(Embed {
+                        title = "Most upvoted channels"
+                        description = leaderboard.joinToString("\n") {
+                            "<#${it.first}>: ${it.second} upvotes"
+                        }
+                    })
                 }
             }
 
@@ -139,13 +138,13 @@ fun main() {
 
                     val leaderboard = Messages.userMessagesLeaderboard()
 
-                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
-                        .and(event.hook.editOriginalEmbeds(Embed {
-                            title = "Most messages by users"
-                            description = leaderboard.joinToString("\n") {
-                                "<@${it.first}>: ${it.second} messages"
-                            }
-                        })).queue()
+                    message("Indexed all channels. _($count messages)_")
+                    embed(Embed {
+                        title = "Most messages by users"
+                        description = leaderboard.joinToString("\n") {
+                            "<@${it.first}>: ${it.second} messages"
+                        }
+                    })
                 }
             }
 
@@ -155,13 +154,13 @@ fun main() {
 
                     val leaderboard = Messages.userUpvoteLeaderboard()
 
-                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
-                        .and(event.hook.editOriginalEmbeds(Embed {
-                            title = "Most upvoted users"
-                            description = leaderboard.joinToString("\n") {
-                                "<@${it.first}>: ${it.second} upvotes"
-                            }
-                        })).queue()
+                    message("Indexed all channels. _($count messages)_")
+                    embed(Embed {
+                        title = "Most upvoted users"
+                        description = leaderboard.joinToString("\n") {
+                            "<@${it.first}>: ${it.second} upvotes"
+                        }
+                    })
                 }
             }
 
@@ -174,31 +173,31 @@ fun main() {
                     val channel = messageChannel("channel")
                     val leaderboard = Messages.messageUpvoteLeaderboard(channel)
 
-                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
-                        .and(event.hook.editOriginalEmbeds(Embed {
-                            title = "Most upvoted messages${if (channel != null) " in #${channel.name}" else ""}"
-                            description = leaderboard.withIndex().joinToString("\n") { (i, spot) ->
-                                val message = spot.first
-                                val upvotes = spot.second
+                    message("Indexed all channels. _($count messages)_")
+                    embed(Embed {
+                        title = "Most upvoted messages${if (channel != null) " in #${channel.name}" else ""}"
+                        description = leaderboard.withIndex().joinToString("\n") { (i, spot) ->
+                            val message = spot.first
+                            val upvotes = spot.second
 
-                                val jdaMessage = (event.guild?.getGuildChannelById(message.channel) as? MessageChannel)
-                                    ?.retrieveMessageById(message.id)
-                                    ?.complete()
+                            val jdaMessage = (event.guild?.getGuildChannelById(message.channel) as? MessageChannel)
+                                ?.retrieveMessageById(message.id)
+                                ?.complete()
 
-                                var out = "**${i + 1}.** " +
-                                        (if (jdaMessage != null) "[Link](${jdaMessage.jumpUrl}) - " else "") +
-                                        "<t:${message.timestamp.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>, " +
-                                        "<@${message.author}>" +
-                                        (if (channel == null) " in <#${message.channel}>" else "") +
-                                        " with $upvotes upvotes\n"
+                            var out = "**${i + 1}.** " +
+                                    (if (jdaMessage != null) "[Link](${jdaMessage.jumpUrl}) - " else "") +
+                                    "<t:${message.timestamp.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>, " +
+                                    "<@${message.author}>" +
+                                    (if (channel == null) " in <#${message.channel}>" else "") +
+                                    " with $upvotes upvotes\n"
 
-                                message.contents?.let {
-                                    out += "> " + it.lines().joinToString("\n> ") + "\n"
-                                }
-
-                                out
+                            message.contents?.let {
+                                out += "> " + it.lines().joinToString("\n> ") + "\n"
                             }
-                        })).queue()
+
+                            out
+                        }
+                    })
                 }
             }
         }
