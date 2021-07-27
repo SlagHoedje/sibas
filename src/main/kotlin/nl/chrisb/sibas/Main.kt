@@ -22,6 +22,8 @@ fun main() {
         .setActivity(Activity.playing("Tetris"))
         .build()
 
+
+
     jda.listener<MessageReactionAddEvent> { event ->
         event.retrieveMessage().queue {
             Messages.updateMessage(it)
@@ -46,7 +48,13 @@ fun main() {
                 val channel = messageChannel("channel") ?: fail("No channel specified")
                 message("Indexing <#${channel.id}>...")
 
-                val count = Messages.index(channel, event)
+                val count = Messages.index(channel) { blocked, count ->
+                    if (blocked) {
+                        message("Indexing <#${channel.id}>... _(waiting for another thread to finish)_")
+                    } else {
+                        message("Indexing <#${channel.id}>... _($count messages)_")
+                    }
+                }
                 message("**DONE!** Indexed <#${channel.id}>. _($count messages)_")
             }
         }

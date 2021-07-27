@@ -114,7 +114,13 @@ class CommandContext(val event: SlashCommandEvent) {
 
         var count = 0
         event.guild?.textChannels?.forEach {
-            count += Messages.index(it, event)
+            count += Messages.index(it) { blocked, count ->
+                if (blocked) {
+                    message("Indexing <#${it.id}>... _(waiting for another thread to finish)_")
+                } else {
+                    message("Indexing <#${it.id}>... _($count messages)_")
+                }
+            }
         }
 
         return count

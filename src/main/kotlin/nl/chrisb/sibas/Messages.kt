@@ -112,11 +112,11 @@ object Messages {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun index(channel: MessageChannel, event: SlashCommandEvent? = null): Int {
+    suspend fun index(channel: MessageChannel, progressCallback: ((blocked: Boolean, count: Int) -> Unit)?): Int {
         val lock = locks.getOrPut(channel.idLong) { Mutex() }
 
         if (!lock.tryLock()) {
-            event?.hook?.editOriginal("Indexing <#${channel.id}>... _(waiting for another thread to finish)_")?.queue()
+            progressCallback?.invoke(true, 0)
 
             lock.lock()
             lock.unlock()
@@ -125,14 +125,14 @@ object Messages {
         }
 
         try {
+            progressCallback?.invoke(false, 0)
+
             var count = 0
             val messages = mutableListOf<StoredMessage>()
             val reactions = mutableListOf<StoredReaction>()
 
             val limit = lastIndexTimestamp(channel).toInstant()
             val now = Instant.now(Clock.systemUTC())
-
-            var updating = event == null
 
             var history = listOf(
                 channel.retrieveMessageById(channel.latestMessageId).await(),
@@ -163,13 +163,7 @@ object Messages {
                         messages.clear()
                         reactions.clear()
 
-                        if (!updating) {
-                            updating = true
-                            event!!.hook.editOriginal("Indexing <#${channel.id}>... _($count messages)_")
-                                .queue {
-                                    updating = false
-                                }
-                        }
+                        progressCallback?.invoke(false, count)
                     }
                 }
 
