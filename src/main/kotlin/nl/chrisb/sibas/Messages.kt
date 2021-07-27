@@ -1,6 +1,7 @@
 package nl.chrisb.sibas
 
 import com.zaxxer.hikari.HikariDataSource
+import dev.minn.jda.ktx.await
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.sync.Mutex
 import net.dv8tion.jda.api.entities.Message
@@ -134,8 +135,8 @@ object Messages {
             var updating = event == null
 
             var history = listOf(
-                channel.retrieveMessageById(channel.latestMessageId).complete(),
-                *channel.getHistoryBefore(channel.latestMessageId, 100).complete().retrievedHistory.toTypedArray()
+                channel.retrieveMessageById(channel.latestMessageId).await(),
+                *channel.getHistoryBefore(channel.latestMessageId, 100).await().retrievedHistory.toTypedArray()
             )
 
             while (true) {
@@ -185,7 +186,7 @@ object Messages {
                     return count
                 }
 
-                history = channel.getHistoryBefore(history.last().id, 100).complete().retrievedHistory
+                history = channel.getHistoryBefore(history.last().id, 100).await().retrievedHistory
             }
         } catch (e: Throwable) {
             println("Error while indexing #${channel.name}: ${e.message}")
