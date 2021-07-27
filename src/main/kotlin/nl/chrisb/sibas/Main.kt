@@ -1,14 +1,13 @@
 package nl.chrisb.sibas
 
-import dev.minn.jda.ktx.*
-import dev.minn.jda.ktx.interactions.*
-import net.dv8tion.jda.api.JDA
+import dev.minn.jda.ktx.Embed
+import dev.minn.jda.ktx.injectKTX
+import dev.minn.jda.ktx.interactions.Option
+import dev.minn.jda.ktx.listener
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.MessageChannel
-import net.dv8tion.jda.api.events.guild.GuildReadyEvent
-import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent
@@ -41,121 +40,82 @@ fun main() {
         Messages.updateMessage(event.message)
     }
 
-    jda.listener<GuildReadyEvent> {
-        it.guild.updateCommands {
-            addCommands(
-                Command("index", "Index messages of channel") {
-                    option<MessageChannel>("channel", "Channel to index", required = true)
-                },
-                Command("indexall", "Index messages of all channels"),
-                Command("cleardb", "Clear the database"),
-                Command("reindexall", "Clear the database and reindex all channels"),
-                Command("stats", "Show bot stats"),
-                Command("leaderboard", "Show various leaderboards") {
-                    addSubcommandGroups(
-                        SubcommandGroup("channel", "Channel related leaderboards") {
-                            subcommand("messages", "Show a leaderboard of channels with the most messages")
-                            subcommand("upvotes", "Show a leaderboard of channels with the most upvotes")
-                        },
-                        SubcommandGroup("user", "User related leaderboards") {
-                            subcommand("messages", "Show a leaderboard of users with the most messages")
-                            subcommand("upvotes", "Show a leaderboard of users with the most upvotes")
-                        },
-                        SubcommandGroup("message", "Message related leaderboards") {
-                            subcommand("upvotes", "Show a leaderboard of messages with the most upvotes") {
-                                option<MessageChannel>("channel", "Channel for the messages", required = false)
-                            }
-                        }
-                    )
-                },
-            )
+    jda.commands {
+        command("index", "Index messages of a channel") {
+            option(Option<MessageChannel>("channel", "The channel to index", required = true))
 
-            queue()
-        }
-    }
+            executor {
+                val channel = messageChannel("channel") ?: fail("No channel specified")
+                message("Indexing <#${channel.id}>...")
 
-    jda.onCommandHandleErrors("stats") {
-        val stats = Messages.stats()
-
-        it.replyEmbeds(Embed {
-            field(name = "Messages", value = stats.messages.toString())
-            field(name = "Reactions", value = stats.reactions.toString())
-        }).queue()
-    }
-
-    jda.onCommandHandleErrors("index") { event ->
-        val channel = event.getOptionsByName("channel")[0].asMessageChannel!!
-        event.reply("Indexing <#${channel.id}>...").queue()
-
-        Messages.index(channel, event).thenAccept {
-            event.hook.editOriginal("**DONE!** Indexed <#${channel.id}>. _($it messages)_").queue()
-        }
-    }
-
-    jda.onCommandHandleErrors("indexall") { event ->
-        event.reply("Indexing all channels...").queue()
-
-        var count = 0
-        event.guild?.textChannels?.forEach {
-            count += Messages.index(it, event).await()
-        }
-
-        event.hook.editOriginal("**DONE!** Indexed all channels. _($count messages)_").queue()
-    }
-
-    jda.onCommandHandleErrors("cleardb") { event ->
-        if (event.member?.isAdmin() != true) {
-            event.reply("**ERROR!** You are not allowed to do this.")
-                .setEphemeral(true)
-                .queue()
-        } else {
-            event.reply("Clearing the database...").queue()
-            Messages.clearDB()
-            event.hook.editOriginal("**DONE!** Cleared the database.").queue()
-        }
-    }
-
-    jda.onCommandHandleErrors("reindexall") { event ->
-        if (event.member?.isAdmin() != true) {
-            event.reply("**ERROR!** You are not allowed to do this.")
-                .setEphemeral(true)
-                .queue()
-        } else {
-            event.reply("Clearing the database...").queue()
-            Messages.clearDB()
-            event.hook.editOriginal("Indexing all channels...").queue()
-
-            var count = 0
-            event.guild?.textChannels?.forEach {
-                count += Messages.index(it, event).await()
+                Messages.index(channel, event).thenAccept {
+                    message("**DONE!** Indexed <#${channel.id}>. _($it messages)_")
+                }
             }
-
-            event.hook.editOriginal("**DONE!** Indexed all channels. _($count messages)_").queue()
-        }
-    }
-
-    jda.onCommandHandleErrors("leaderboard") { event ->
-        event.reply("Indexing all channels...").queue()
-
-        var count = 0
-        event.guild?.textChannels?.forEach {
-            count += Messages.index(it, event).await()
         }
 
-        when (event.subcommandGroup) {
-            "channel" -> when (event.subcommandName) {
-                "messages" -> {
+        command("stats", "Show some general bot stats") {
+            executor {
+                val stats = Messages.stats()
+
+                event.replyEmbeds(Embed {
+                    field(name = "Messages", value = stats.messages.toString())
+                    field(name = "Reactions", value = stats.reactions.toString())
+                }).queue()
+            }
+        }
+
+        command("indexall", "Index messages of all channels") {
+            executor {
+                val count = preIndex()
+                message("**DONE!** Indexed all channels. _($count messages)_")
+            }
+        }
+
+        command("cleardb", "Clear all data from the database") {
+            executor {
+                checkAdmin()
+
+                message("Clearing the database...")
+                Messages.clearDB()
+                message("**DONE!** Cleared the database.")
+            }
+        }
+
+        command("reindexall", "Clear all data from the database and reindex all messages") {
+            executor {
+                checkAdmin()
+
+                message("Clearing the database...")
+                Messages.clearDB()
+
+                val count = preIndex()
+                message("**DONE!** Indexed all channels. _($count messages)_")
+            }
+        }
+
+        command("leaderboard") {
+            subCommand(group = "channel", name = "messages", description = "Top channels with the most messages") {
+                executor {
+                    val count = preIndex()
+
                     val leaderboard = Messages.channelMessagesLeaderboard()
 
-                    event.hook.editOriginal("Indexed all channels. _($count messages)_")
-                        .and(event.hook.editOriginalEmbeds(Embed {
+                    event.hook.editOriginal("Indexed all channels. _($count messages)_").and(
+                        event.hook.editOriginalEmbeds(Embed {
                             title = "Most messages in channels"
                             description = leaderboard.joinToString("\n") {
                                 "<#${it.first}>: ${it.second} messages"
                             }
-                        })).queue()
+                        })
+                    ).queue()
                 }
-                "upvotes" -> {
+            }
+
+            subCommand(group = "channel", name = "upvotes", description = "Top channels with the most upvotes") {
+                executor {
+                    val count = preIndex()
+
                     val leaderboard = Messages.channelUpvotesLeaderboard()
 
                     event.hook.editOriginal("Indexed all channels. _($count messages)_")
@@ -167,8 +127,11 @@ fun main() {
                         })).queue()
                 }
             }
-            "user" -> when (event.subcommandName) {
-                "messages" -> {
+
+            subCommand(group = "user", name = "messages", description = "Top users with the most messages") {
+                executor {
+                    val count = preIndex()
+
                     val leaderboard = Messages.userMessagesLeaderboard()
 
                     event.hook.editOriginal("Indexed all channels. _($count messages)_")
@@ -179,7 +142,12 @@ fun main() {
                             }
                         })).queue()
                 }
-                "upvotes" -> {
+            }
+
+            subCommand(group = "user", name = "upvotes", description = "Top users with the most upvotes") {
+                executor {
+                    val count = preIndex()
+
                     val leaderboard = Messages.userUpvoteLeaderboard()
 
                     event.hook.editOriginal("Indexed all channels. _($count messages)_")
@@ -191,9 +159,14 @@ fun main() {
                         })).queue()
                 }
             }
-            "message" -> when (event.subcommandName) {
-                "upvotes" -> {
-                    val channel = event.getOption("channel")?.asMessageChannel
+
+            subCommand(group = "message", name = "upvotes", description = "Top messages with the most upvotes") {
+                option(Option<MessageChannel>("channel", "Channel to scan"))
+
+                executor {
+                    val count = preIndex()
+
+                    val channel = messageChannel("channel")
                     val leaderboard = Messages.messageUpvoteLeaderboard(channel)
 
                     event.hook.editOriginal("Indexed all channels. _($count messages)_")
@@ -230,14 +203,3 @@ fun main() {
 }
 
 fun Member.isAdmin() = id == "120593086844895234" || roles.any { it.name == "Staff" }
-
-fun JDA.onCommandHandleErrors(name: String, consumer: suspend CoroutineEventListener.(SlashCommandEvent) -> Unit) {
-    onCommand(name) {
-        try {
-            consumer(it)
-        } catch (e: Throwable) {
-            e.printStackTrace()
-            it.hook.editOriginal("**ERROR!** Internal error: ${e.message}").queue()
-        }
-    }
-}

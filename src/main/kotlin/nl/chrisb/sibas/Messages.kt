@@ -68,7 +68,8 @@ object Messages {
             val statement = connection.createStatement()
             statement.execute(
                 "DELETE FROM messages WHERE true;" +
-                        "DELETE FROM reactions WHERE true;"
+                        "DELETE FROM reactions WHERE true;" +
+                        "DELETE FROM last_update WHERE true;"
             )
         }
     }
