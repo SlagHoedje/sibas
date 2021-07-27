@@ -93,7 +93,7 @@ fun main() {
         var count = 0
         event.guild?.textChannels?.forEach {
             count += Messages.index(it, event).await()
-        } ?: run { event.hook.editOriginal("**ERROR!** This command should be executed in a guild.").queue() }
+        }
 
         event.hook.editOriginal("**DONE!** Indexed all channels. _($count messages)_").queue()
     }
@@ -104,7 +104,7 @@ fun main() {
         var count = 0
         event.guild?.textChannels?.forEach {
             count += Messages.index(it, event).await()
-        } ?: run { event.hook.editOriginal("**ERROR!** This command should be executed in a guild.").queue() }
+        }
 
         when (event.subcommandGroup) {
             "channel" -> when (event.subcommandName) {
