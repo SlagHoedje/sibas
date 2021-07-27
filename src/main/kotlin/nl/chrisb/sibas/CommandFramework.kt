@@ -110,8 +110,6 @@ class Command(val name: String, val description: String) {
 }
 
 class CommandContext(val event: SlashCommandEvent) {
-    private var hasReplied = false
-
     suspend fun preIndex(): Int {
         message("Indexing all channels...")
 
@@ -132,11 +130,10 @@ class CommandContext(val event: SlashCommandEvent) {
     }
 
     fun message(message: String) {
-        if (hasReplied) {
+        if (event.interaction.isAcknowledged) {
             event.hook.editOriginal(message).queue()
         } else {
             event.reply(message).queue()
-            hasReplied = true
         }
     }
 
