@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import java.sql.ResultSet
 import java.sql.Statement
 import java.sql.Timestamp
+import java.sql.Types
 import java.time.*
 import java.util.concurrent.CompletableFuture
 
@@ -47,7 +48,7 @@ object Messages {
                 "CREATE TABLE IF NOT EXISTS reactions(" +
                         "message BIGINT NOT NULL, " +
                         "name TEXT NOT NULL, " +
-                        "id BIGINT NOT NULL, " +
+                        "id BIGINT, " +
                         "count INT NOT NULL, " +
                         "PRIMARY KEY (message, id)" +
                         ")"
@@ -98,7 +99,13 @@ object Messages {
             for (reaction in reactions) {
                 statement.setLong(1, reaction.message)
                 statement.setString(2, reaction.name)
-                statement.setLong(3, reaction.id)
+
+                if (reaction.id != null) {
+                    statement.setLong(3, reaction.id)
+                } else {
+                    statement.setNull(3, Types.BIGINT)
+                }
+
                 statement.setInt(4, reaction.count)
                 statement.addBatch()
             }
@@ -359,14 +366,14 @@ fun Message.toStoredMessage() = StoredMessage(
 data class StoredReaction(
     val message: Long,
     val name: String,
-    val id: Long,
+    val id: Long?,
     val count: Int,
 )
 
 fun MessageReaction.toStoredReaction() = StoredReaction(
     messageIdLong,
     reactionEmote.name,
-    reactionEmote.idLong,
+    if (reactionEmote.isEmoji) null else reactionEmote.idLong,
     count
 )
 
