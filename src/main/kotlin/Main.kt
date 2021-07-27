@@ -13,7 +13,7 @@ import java.time.ZoneOffset
 
 // https://discord.com/oauth2/authorize?client_id=865179659591483403&scope=bot+applications.commands
 
-fun main(args: Array<String>) {
+fun main() {
     val jda = JDABuilder.createLight(
         System.getenv("DISCORD_TOKEN")
             ?: throw RuntimeException("Environment variable DISCORD_TOKEN should contain the discord bot token")

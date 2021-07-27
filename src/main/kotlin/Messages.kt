@@ -100,56 +100,62 @@ object Messages {
             }
         }
 
-        var count = 0
-        val messages = mutableListOf<StoredMessage>()
-        val reactions = mutableListOf<StoredReaction>()
+        try {
+            var count = 0
+            val messages = mutableListOf<StoredMessage>()
+            val reactions = mutableListOf<StoredReaction>()
 
-        val limit = lastIndexTimestamp(channel).toInstant()
-        val now = Instant.now(Clock.systemUTC())
+            val limit = lastIndexTimestamp(channel).toInstant()
+            val now = Instant.now(Clock.systemUTC())
 
-        var updating = event == null
+            var updating = event == null
 
-        return channel.iterableHistory.forEachRemainingAsync { message ->
-            val timeUTC = message.timeCreated.atZoneSimilarLocal(ZoneId.of("UTC")).toInstant()
+            return channel.iterableHistory.forEachRemainingAsync { message ->
+                val timeUTC = message.timeCreated.atZoneSimilarLocal(ZoneId.of("UTC")).toInstant()
 
-            if (timeUTC.isAfter(now)) {
-                return@forEachRemainingAsync true
-            }
+                if (timeUTC.isAfter(now)) {
+                    return@forEachRemainingAsync true
+                }
 
-            if (!timeUTC.isAfter(limit)) {
-                return@forEachRemainingAsync false
-            }
+                if (!timeUTC.isAfter(limit)) {
+                    return@forEachRemainingAsync false
+                }
 
-            messages.add(message.toStoredMessage())
-            reactions.addAll(message.reactions.map { it.toStoredReaction() })
+                messages.add(message.toStoredMessage())
+                reactions.addAll(message.reactions.map { it.toStoredReaction() })
 
-            if (messages.size >= 500) {
+                if (messages.size >= 500) {
+                    count += messages.size
+
+                    insertMessages(messages)
+                    insertReactions(reactions)
+                    messages.clear()
+                    reactions.clear()
+
+                    if (!updating) {
+                        updating = true
+                        event!!.hook.editOriginal("Indexing <#${channel.id}>... _($count messages)_")
+                            .queue {
+                                updating = false
+                            }
+                    }
+                }
+
+                true
+            }.thenApply {
                 count += messages.size
 
                 insertMessages(messages)
                 insertReactions(reactions)
-                messages.clear()
-                reactions.clear()
 
-                if (!updating) {
-                    updating = true
-                    event!!.hook.editOriginal("Indexing <#${channel.id}>... _($count messages)_")
-                        .queue {
-                            updating = false
-                        }
-                }
+                lock.unlock()
+
+                count
             }
-
-            true
-        }.thenApply {
-            count += messages.size
-
-            insertMessages(messages)
-            insertReactions(reactions)
-
+        } catch (e: Throwable) {
+            println("Error while indexing #${channel.name}: ${e.message}")
             lock.unlock()
-
-            count
+            return CompletableFuture.completedFuture(0)
         }
     }
 
