@@ -1,5 +1,4 @@
-FROM openjdk:11.0.12-oracle
+FROM gradle:7.1.1-jre11
 WORKDIR /sibas
-COPY . .
-RUN chmod +x gradlew
-ENTRYPOINT ["/bin/bash", "./gradlew", "run"]
+COPY --chown=gradle:gradle . .
+ENTRYPOINT ["gradle", "run", "--no-daemon"]
