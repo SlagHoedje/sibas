@@ -54,7 +54,11 @@ fun JDA.commands(builder: CommandsBuilder.() -> Unit) {
                         command.subCommands[it.subcommandGroup ?: ""]?.find { subCommand ->
                             subCommand.name == it.subcommandName
                         }?.exec?.invoke(context) ?: run {
-                            command.exec?.invoke(context)
+                            try {
+                                command.exec?.invoke(context)
+                            } catch (e: Throwable) {
+                                context.message("**ERROR!** ${e.message}")
+                            }
                         }
                     } catch (e: Throwable) {
                         context.message("**ERROR!** ${e.message}")
