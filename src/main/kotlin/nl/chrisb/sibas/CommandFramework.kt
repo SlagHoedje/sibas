@@ -49,28 +49,29 @@ fun JDA.commands(builder: CommandsBuilder.() -> Unit) {
                         })
                     }
                 }
+            }
 
-                onCommand(command.name) {
-                    val context = CommandContext(it)
+            queue()
+        }
+    }
 
+    for (command in commandsBuilder.commands) {
+        onCommand(command.name) {
+            val context = CommandContext(it)
+
+            try {
+                command.subCommands[it.subcommandGroup ?: ""]?.find { subCommand ->
+                    subCommand.name == it.subcommandName
+                }?.exec?.invoke(context) ?: run {
                     try {
-                        command.subCommands[it.subcommandGroup ?: ""]?.find { subCommand ->
-                            subCommand.name == it.subcommandName
-                        }?.exec?.invoke(context) ?: run {
-                            try {
-                                command.exec?.invoke(context)
-                            } catch (e: Throwable) {
-                                context.message("**ERROR!** ${e.message}")
-                            }
-                        }
+                        command.exec?.invoke(context)
                     } catch (e: Throwable) {
                         context.message("**ERROR!** ${e.message}")
                     }
                 }
-
+            } catch (e: Throwable) {
+                context.message("**ERROR!** ${e.message}")
             }
-
-            queue()
         }
     }
 }
