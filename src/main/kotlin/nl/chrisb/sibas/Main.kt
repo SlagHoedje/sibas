@@ -107,6 +107,8 @@ fun main() {
         command("leaderboard") {
             subCommand(group = "channel", name = "messages", description = "Top channels with the most messages") {
                 executor {
+                    event.deferReply().queue()
+
                     val leaderboard = Messages.channelMessagesLeaderboard()
 
                     embed(Embed {
@@ -120,6 +122,8 @@ fun main() {
 
             subCommand(group = "channel", name = "upvotes", description = "Top channels with the most upvotes") {
                 executor {
+                    event.deferReply().queue()
+
                     val leaderboard = Messages.channelUpvotesLeaderboard()
 
                     embed(Embed {
@@ -133,6 +137,8 @@ fun main() {
 
             subCommand(group = "user", name = "messages", description = "Top users with the most messages") {
                 executor {
+                    event.deferReply().queue()
+
                     val leaderboard = Messages.userMessagesLeaderboard()
 
                     embed(Embed {
@@ -146,6 +152,8 @@ fun main() {
 
             subCommand(group = "user", name = "upvotes", description = "Top users with the most upvotes") {
                 executor {
+                    event.deferReply().queue()
+
                     val leaderboard = Messages.userUpvoteLeaderboard()
 
                     embed(Embed {
@@ -161,6 +169,8 @@ fun main() {
                 option(Option<MessageChannel>("channel", "Channel to scan"))
 
                 executor {
+                    event.deferReply().queue()
+
                     val channel = messageChannel("channel")
                     val leaderboard = Messages.messageUpvoteLeaderboard(channel)
 
