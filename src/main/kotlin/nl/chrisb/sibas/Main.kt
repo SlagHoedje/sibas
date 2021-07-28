@@ -41,6 +41,27 @@ fun main() {
 
     jda.listener<MessageReceivedEvent> { event ->
         Messages.scheduleIndex(event.channel)
+
+        val content = event.message.contentRaw
+        if (content.startsWith("+run ")) {
+            try {
+                val code = parseRunCommand(content)
+
+                val result = code.run()
+                println(result)
+
+                val message = if (result.compileOutput?.code ?: 0 != 0) {
+                    "**ERROR!**\n" +
+                            "``` ${result.compileOutput.output.removeSuffix("\n")} ```"
+                } else {
+                    "``` ${result.output.output.removeSuffix("\n")} ```"
+                }
+
+                event.message.reply(message).queue()
+            } catch (e: Throwable) {
+                event.message.reply("**ERROR!** ${e.message}").queue()
+            }
+        }
     }
 
     jda.commands {

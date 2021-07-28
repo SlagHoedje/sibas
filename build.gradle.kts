@@ -22,6 +22,8 @@ dependencies {
 
     implementation("com.zaxxer:HikariCP:2.3.2")
     implementation("org.postgresql:postgresql:42.2.23")
+
+    implementation("com.github.the-codeboy:Piston4J:0.0.6")
 }
 
 application {
