@@ -120,21 +120,6 @@ fun main() {
                 }
             }
 
-            subCommand(group = "channel", name = "upvotes", description = "Top channels with the most upvotes") {
-                executor {
-                    event.deferReply().queue()
-
-                    val leaderboard = Messages.channelUpvotesLeaderboard()
-
-                    embed(Embed {
-                        title = "Most upvoted channels"
-                        description = leaderboard.joinToString("\n") {
-                            "<#${it.first}>: ${it.second} upvotes"
-                        }
-                    })
-                }
-            }
-
             subCommand(group = "user", name = "messages", description = "Top users with the most messages") {
                 executor {
                     event.deferReply().queue()
@@ -150,54 +135,83 @@ fun main() {
                 }
             }
 
-            subCommand(group = "user", name = "upvotes", description = "Top users with the most upvotes") {
-                executor {
-                    event.deferReply().queue()
+            for (reaction in listOf("upvote", "downvote")) {
+                subCommand(
+                    group = "channel",
+                    name = "${reaction}s",
+                    description = "Top channels with the most ${reaction}s"
+                ) {
+                    executor {
+                        event.deferReply().queue()
 
-                    val leaderboard = Messages.userUpvoteLeaderboard()
+                        val leaderboard = Messages.channelReactionsLeaderboard(reaction)
 
-                    embed(Embed {
-                        title = "Most upvoted users"
-                        description = leaderboard.joinToString("\n") {
-                            "<@${it.first}>: ${it.second} upvotes"
-                        }
-                    })
-                }
-            }
-
-            subCommand(group = "message", name = "upvotes", description = "Top messages with the most upvotes") {
-                option(Option<MessageChannel>("channel", "Channel to scan"))
-
-                executor {
-                    event.deferReply().queue()
-
-                    val channel = messageChannel("channel")
-                    val leaderboard = Messages.messageUpvoteLeaderboard(channel)
-
-                    embed(Embed {
-                        title = "Most upvoted messages${if (channel != null) " in #${channel.name}" else ""}"
-                        description = leaderboard.withIndex().joinToString("\n") { (i, spot) ->
-                            val message = spot.first
-                            val upvotes = spot.second
-
-                            val jdaMessage = (event.guild?.getGuildChannelById(message.channel) as? MessageChannel)
-                                ?.retrieveMessageById(message.id)
-                                ?.complete()
-
-                            var out = "**${i + 1}.** " +
-                                    (if (jdaMessage != null) "[Link](${jdaMessage.jumpUrl}) - " else "") +
-                                    "<t:${message.timestamp.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>, " +
-                                    "<@${message.author}>" +
-                                    (if (channel == null) " in <#${message.channel}>" else "") +
-                                    " with $upvotes upvotes\n"
-
-                            message.contents?.let {
-                                out += "> " + it.lines().joinToString("\n> ") + "\n"
+                        embed(Embed {
+                            title = "Most ${reaction}d channels"
+                            description = leaderboard.joinToString("\n") {
+                                "<#${it.first}>: ${it.second} ${reaction}s"
                             }
+                        })
+                    }
+                }
 
-                            out
-                        }
-                    })
+                subCommand(
+                    group = "user",
+                    name = "${reaction}s",
+                    description = "Top users with the most ${reaction}s"
+                ) {
+                    executor {
+                        event.deferReply().queue()
+
+                        val leaderboard = Messages.userReactionLeaderboard(reaction)
+
+                        embed(Embed {
+                            title = "Most ${reaction}d users"
+                            description = leaderboard.joinToString("\n") {
+                                "<@${it.first}>: ${it.second} ${reaction}s"
+                            }
+                        })
+                    }
+                }
+
+                subCommand(
+                    group = "message",
+                    name = "${reaction}s",
+                    description = "Top messages with the most ${reaction}s"
+                ) {
+                    option(Option<MessageChannel>("channel", "Channel to scan"))
+
+                    executor {
+                        event.deferReply().queue()
+
+                        val channel = messageChannel("channel")
+                        val leaderboard = Messages.messageReactionLeaderboard(reaction, channel)
+
+                        embed(Embed {
+                            title = "Most ${reaction}d messages${if (channel != null) " in #${channel.name}" else ""}"
+                            description = leaderboard.withIndex().joinToString("\n") { (i, spot) ->
+                                val message = spot.first
+                                val reactions = spot.second
+
+                                val jdaMessage = (event.guild?.getGuildChannelById(message.channel) as? MessageChannel)
+                                    ?.retrieveMessageById(message.id)
+                                    ?.complete()
+
+                                var out = "**${i + 1}.** " +
+                                        (if (jdaMessage != null) "[Link](${jdaMessage.jumpUrl}) - " else "") +
+                                        "<t:${message.timestamp.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>, " +
+                                        "<@${message.author}>" +
+                                        (if (channel == null) " in <#${message.channel}>" else "") +
+                                        " with $reactions ${reaction}s\n"
+
+                                message.contents?.let {
+                                    out += "> " + it.lines().joinToString("\n> ") + "\n"
+                                }
+
+                                out
+                            }
+                        })
+                    }
                 }
             }
         }

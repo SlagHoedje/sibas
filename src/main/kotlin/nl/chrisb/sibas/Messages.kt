@@ -275,36 +275,50 @@ object Messages {
         }
     }
 
+    private fun getReactionLeaderboard(sql: String, reaction: String): List<Pair<Long, Int>> {
+        ds.connection.use { connection ->
+            val statement = connection.prepareStatement(sql)
+            statement.setString(1, reaction)
+            statement.execute()
+
+            val leaderboard = mutableListOf<Pair<Long, Int>>()
+            statement.forEachResult {
+                leaderboard.add(it.getLong(1) to it.getInt(2))
+            }
+
+            return leaderboard
+        }
+    }
+
     fun channelMessagesLeaderboard() =
         getLeaderboard("SELECT channel, COUNT(*) as count FROM messages GROUP BY channel ORDER BY count DESC")
 
-    fun channelUpvotesLeaderboard() =
-        getLeaderboard(
+    fun channelReactionsLeaderboard(reaction: String) =
+        getReactionLeaderboard(
             "SELECT m.channel, SUM(r.count) AS count " +
                     "FROM messages m, reactions r " +
                     "WHERE m.id = r.message " +
-                    "  AND r.name = 'upvote' " +
+                    "  AND r.name = ? " +
                     "GROUP BY m.channel " +
                     "ORDER BY count DESC " +
-                    "LIMIT 30"
+                    "LIMIT 30", reaction
         )
 
     fun userMessagesLeaderboard() =
         getLeaderboard("SELECT author, COUNT(*) as count FROM messages GROUP BY author ORDER BY count DESC LIMIT 30")
 
-    // TODO: This shouldn't rely on the reaction name, rather on a user-set emote.
-    fun userUpvoteLeaderboard() =
-        getLeaderboard(
+    fun userReactionLeaderboard(reaction: String) =
+        getReactionLeaderboard(
             "SELECT m.author, SUM(r.count) AS count\n" +
                     "FROM messages m, reactions r\n" +
                     "WHERE m.id = r.message\n" +
                     "  AND r.name = 'upvote'\n" +
                     "GROUP BY m.author\n" +
                     "ORDER BY count DESC\n" +
-                    "LIMIT 30\n"
+                    "LIMIT 30\n", reaction
         )
 
-    fun messageUpvoteLeaderboard(channel: MessageChannel? = null): List<Pair<StoredMessage, Int>> {
+    fun messageReactionLeaderboard(reaction: String, channel: MessageChannel? = null): List<Pair<StoredMessage, Int>> {
         ds.connection.use { connection ->
             val statement = if (channel != null) {
                 val statement = connection.prepareStatement(
@@ -312,29 +326,31 @@ object Messages {
                             "FROM messages m,\n" +
                             "     reactions r\n" +
                             "WHERE m.id = r.message\n" +
-                            "  AND r.name = 'upvote'\n" +
+                            "  AND r.name = ?\n" +
                             "  AND m.channel = ?\n" +
                             "GROUP BY m.id\n" +
                             "ORDER BY count DESC\n" +
                             "LIMIT 10;\n"
                 )
 
-                statement.setLong(1, channel.idLong)
+                statement.setString(1, reaction)
+                statement.setLong(2, channel.idLong)
                 statement.execute()
 
                 statement
             } else {
-                val statement = connection.createStatement()
-                statement.execute(
+                val statement = connection.prepareStatement(
                     "SELECT m.*, MAX(r.count) as count\n" +
                             "FROM messages m,\n" +
                             "     reactions r\n" +
                             "WHERE m.id = r.message\n" +
-                            "  AND r.name = 'upvote'\n" +
+                            "  AND r.name = ?\n" +
                             "GROUP BY m.id\n" +
                             "ORDER BY count DESC\n" +
                             "LIMIT 10;\n"
                 )
+                statement.setString(1, reaction)
+                statement.execute()
 
                 statement
             }
