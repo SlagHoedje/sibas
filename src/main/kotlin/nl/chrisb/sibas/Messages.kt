@@ -395,7 +395,7 @@ object Messages {
                         "AND m.id = r.message\n" +
                         "GROUP BY r.name, r.id\n" +
                         "ORDER BY count DESC\n" +
-                        "LIMIT 20;"
+                        "LIMIT 15;"
             )
 
             statement.setLong(1, user.idLong)
@@ -422,7 +422,7 @@ object Messages {
                         "WHERE author = ?\n" +
                         "GROUP BY channel\n" +
                         "ORDER BY count DESC\n" +
-                        "LIMIT 20;\n"
+                        "LIMIT 15;\n"
             )
 
             statement.setLong(1, user.idLong)
