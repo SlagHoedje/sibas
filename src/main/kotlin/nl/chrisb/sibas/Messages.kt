@@ -16,6 +16,7 @@ import java.sql.Statement
 import java.sql.Timestamp
 import java.time.*
 
+@Suppress("EXPERIMENTAL_IS_NOT_ENABLED")
 @OptIn(DelicateCoroutinesApi::class)
 object Messages {
     private val locks = mutableMapOf<Long, Mutex>()
