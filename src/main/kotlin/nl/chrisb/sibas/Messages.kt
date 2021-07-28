@@ -388,7 +388,7 @@ object Messages {
     private fun userReactions(user: User): List<Pair<String, Int>> {
         ds.connection.use { connection ->
             val statement = connection.prepareStatement(
-                "SELECT r.name, r.id, COUNT(r.count) AS count\n" +
+                "SELECT r.name, r.id, SUM(r.count) AS count\n" +
                         "FROM reactions r,\n" +
                         "     messages m\n" +
                         "WHERE m.author = ?\n" +
