@@ -181,4 +181,5 @@ class CommandContext(val event: SlashCommandEvent) {
     }
 
     fun messageChannel(name: String) = event.getOption(name)?.asMessageChannel
+    fun user(name: String) = event.getOption(name)?.asUser
 }

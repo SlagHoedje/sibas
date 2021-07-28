@@ -7,10 +7,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.time.delay
-import net.dv8tion.jda.api.entities.Message
-import net.dv8tion.jda.api.entities.MessageChannel
-import net.dv8tion.jda.api.entities.MessageReaction
-import net.dv8tion.jda.api.entities.MessageType
+import net.dv8tion.jda.api.entities.*
 import java.sql.ResultSet
 import java.sql.Statement
 import java.sql.Timestamp
@@ -387,7 +384,79 @@ object Messages {
         insertMessages(listOf(message.toStoredMessage()))
         insertReactions(message.reactions.map { it.toStoredReaction() })
     }
+
+    private fun userReactions(user: User): List<Pair<String, Int>> {
+        ds.connection.use { connection ->
+            val statement = connection.prepareStatement(
+                "SELECT r.name, r.id, COUNT(r.count) AS count\n" +
+                        "FROM reactions r,\n" +
+                        "     messages m\n" +
+                        "WHERE m.author = ?\n" +
+                        "AND m.id = r.message\n" +
+                        "GROUP BY r.name, r.id\n" +
+                        "ORDER BY count DESC\n" +
+                        "LIMIT 20;"
+            )
+
+            statement.setLong(1, user.idLong)
+            statement.execute()
+
+            val leaderboard = mutableListOf<Pair<String, Int>>()
+            statement.forEachResult {
+                val name = it.getString(1)
+                val id = it.getLong(2)
+                val count = it.getInt(3)
+
+                leaderboard.add((if (id == -1L) name else "<:$name:$id>") to count)
+            }
+
+            return leaderboard
+        }
+    }
+
+    private fun userChannelMessages(user: User): List<Pair<Long, Int>> {
+        ds.connection.use { connection ->
+            val statement = connection.prepareStatement(
+                "SELECT channel, COUNT(id) AS count\n" +
+                        "FROM messages\n" +
+                        "WHERE author = ?\n" +
+                        "GROUP BY channel\n" +
+                        "ORDER BY count DESC\n" +
+                        "LIMIT 20;\n"
+            )
+
+            statement.setLong(1, user.idLong)
+            statement.execute()
+
+            val leaderboard = mutableListOf<Pair<Long, Int>>()
+            statement.forEachResult {
+                leaderboard.add(it.getLong(1) to it.getInt(2))
+            }
+
+            return leaderboard
+        }
+    }
+
+    fun profile(member: Member?, user: User): Profile {
+        return Profile(
+            user.name,
+            user.avatarUrl ?: user.defaultAvatarUrl,
+            user.timeCreated,
+            member?.timeJoined,
+            userReactions(user),
+            userChannelMessages(user)
+        )
+    }
 }
+
+data class Profile(
+    val name: String,
+    val avatar: String,
+    val created: OffsetDateTime,
+    val joined: OffsetDateTime?,
+    val reactions: List<Pair<String, Int>>,
+    val channelMessages: List<Pair<Long, Int>>
+)
 
 data class Stats(val messages: Int, val reactions: Int)
 

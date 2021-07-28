@@ -5,10 +5,7 @@ import dev.minn.jda.ktx.injectKTX
 import dev.minn.jda.ktx.interactions.Option
 import dev.minn.jda.ktx.listener
 import net.dv8tion.jda.api.JDABuilder
-import net.dv8tion.jda.api.entities.Activity
-import net.dv8tion.jda.api.entities.Member
-import net.dv8tion.jda.api.entities.MessageChannel
-import net.dv8tion.jda.api.entities.MessageEmbed
+import net.dv8tion.jda.api.entities.*
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
@@ -105,6 +102,51 @@ fun main() {
             }
         }
 
+        command("profile") {
+            option(Option<User>(name = "user", description = "The user to view the profile of", required = false))
+
+            executor {
+                event.deferReply().queue()
+
+                val user = user("user") ?: event.user
+
+                val profile = Messages.profile(event.member, user)
+
+                embed(Embed {
+                    title = "${profile.name}'${if (profile.name.endsWith('s', true)) "" else "s"} profile"
+                    thumbnail = profile.avatar
+
+                    if (event.member?.timeBoosted != null) {
+                        description = "server booster pog"
+                    }
+
+                    field(
+                        "Account created",
+                        "<t:${profile.created.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>"
+                    )
+
+                    if (profile.joined != null) {
+                        field(
+                            "Joined server",
+                            "<t:${profile.joined.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>"
+                        )
+                    }
+
+                    field(
+                        "Reactions received",
+                        profile.reactions.joinToString("\n") { "${it.first} ${it.second}" },
+                        inline = false
+                    )
+
+                    field(
+                        "Messages sent",
+                        profile.channelMessages.joinToString("\n") { "<#${it.first}>: ${it.second} messages" },
+                        inline = false
+                    )
+                })
+            }
+        }
+
         command("leaderboard") {
             subCommand(group = "channel", name = "messages", description = "Top channels with the most messages") {
                 executor {
@@ -133,6 +175,12 @@ fun main() {
                             "<@${it.first}>: ${it.second} messages"
                         }
                     })
+                }
+            }
+
+            subCommand(group = "user", name = "creation", description = "Oldest accounts on this server") {
+                executor {
+
                 }
             }
 
