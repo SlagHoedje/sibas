@@ -66,10 +66,12 @@ fun JDA.commands(builder: CommandsBuilder.() -> Unit) {
                     try {
                         command.exec?.invoke(context)
                     } catch (e: Throwable) {
+                        e.printStackTrace()
                         context.message("**ERROR!** ${e.message}")
                     }
                 }
             } catch (e: Throwable) {
+                e.printStackTrace()
                 context.message("**ERROR!** ${e.message}")
             }
         }
