@@ -312,7 +312,7 @@ object Messages {
             "SELECT m.author, SUM(r.count) AS count\n" +
                     "FROM messages m, reactions r\n" +
                     "WHERE m.id = r.message\n" +
-                    "  AND r.name = 'upvote'\n" +
+                    "  AND r.name = ?\n" +
                     "GROUP BY m.author\n" +
                     "ORDER BY count DESC\n" +
                     "LIMIT 30\n", reaction
