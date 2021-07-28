@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.MessageChannel
+import net.dv8tion.jda.api.entities.MessageEmbed
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
@@ -187,30 +188,54 @@ fun main() {
                         val channel = messageChannel("channel")
                         val leaderboard = Messages.messageReactionLeaderboard(reaction, channel)
 
-                        embed(Embed {
-                            title = "Most ${reaction}d messages${if (channel != null) " in #${channel.name}" else ""}"
-                            description = leaderboard.withIndex().joinToString("\n") { (i, spot) ->
-                                val message = spot.first
-                                val reactions = spot.second
+                        val spots = leaderboard.withIndex().map { (i, spot) ->
+                            val message = spot.first
+                            val reactions = spot.second
 
-                                val jdaMessage = (event.guild?.getGuildChannelById(message.channel) as? MessageChannel)
-                                    ?.retrieveMessageById(message.id)
-                                    ?.complete()
+                            val jdaMessage = (event.guild?.getGuildChannelById(message.channel) as? MessageChannel)
+                                ?.retrieveMessageById(message.id)
+                                ?.complete()
 
-                                var out = "**${i + 1}.** " +
-                                        (if (jdaMessage != null) "[Link](${jdaMessage.jumpUrl}) - " else "") +
-                                        "<t:${message.timestamp.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>, " +
-                                        "<@${message.author}>" +
-                                        (if (channel == null) " in <#${message.channel}>" else "") +
-                                        " with $reactions ${reaction}s\n"
+                            var out = "**${i + 1}.** " +
+                                    (if (jdaMessage != null) "[Link](${jdaMessage.jumpUrl}) - " else "") +
+                                    "<t:${message.timestamp.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>, " +
+                                    "<@${message.author}>" +
+                                    (if (channel == null) " in <#${message.channel}>" else "") +
+                                    " with $reactions ${reaction}s\n"
 
-                                message.contents?.let {
-                                    out += "> " + it.lines().joinToString("\n> ") + "\n"
-                                }
-
-                                out
+                            message.contents?.let {
+                                out += "> " + it.lines().joinToString("\n> ") + "\n"
                             }
+
+                            out
+                        }
+
+                        var firstTitle =
+                            "Most ${reaction}d messages${if (channel != null) " in #${channel.name}" else ""}"
+                        var currentDescription = ""
+
+                        val embeds = mutableListOf<MessageEmbed>()
+
+                        for (spot in spots) {
+                            if (currentDescription.length + spot.length >= 2047) {
+                                embeds.add(Embed {
+                                    title = firstTitle
+                                    description = currentDescription
+                                })
+
+                                currentDescription = ""
+                                firstTitle = " "
+                            }
+
+                            currentDescription += spot + "\n"
+                        }
+
+                        embeds.add(Embed {
+                            title = firstTitle
+                            description = currentDescription
                         })
+
+                        event.hook.editOriginalEmbeds(embeds).queue()
                     }
                 }
             }
