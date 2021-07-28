@@ -116,7 +116,7 @@ fun main() {
                     title = "${profile.name}'${if (profile.name.endsWith('s', true)) "" else "s"} profile"
                     thumbnail = profile.avatar
 
-                    if (event.member?.timeBoosted != null) {
+                    if (event.guild?.boosters?.contains(event.member) == true) {
                         description = "server booster pog"
                     }
 
@@ -132,16 +132,17 @@ fun main() {
                         )
                     }
 
+                    field()
+
                     field(
                         "Reactions received",
-                        profile.reactions.joinToString("\n") { "${it.first} ${it.second}" },
-                        inline = false
+                        profile.reactions.joinToString("\n") { "${it.first} ${it.second}" }
+
                     )
 
                     field(
                         "Messages sent",
-                        profile.channelMessages.joinToString("\n") { "<#${it.first}>: ${it.second} messages" },
-                        inline = false
+                        profile.channelMessages.joinToString("\n") { "<#${it.first}>: ${it.second} messages" }
                     )
                 })
             }
