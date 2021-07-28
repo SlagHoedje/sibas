@@ -3,19 +3,23 @@ package nl.chrisb.sibas
 import com.zaxxer.hikari.HikariDataSource
 import dev.minn.jda.ktx.await
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.time.delay
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.entities.MessageReaction
 import net.dv8tion.jda.api.entities.MessageType
-import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import java.sql.ResultSet
 import java.sql.Statement
 import java.sql.Timestamp
 import java.time.*
 
+@OptIn(DelicateCoroutinesApi::class)
 object Messages {
     private val locks = mutableMapOf<Long, Mutex>()
+    private val toUpdate = mutableListOf<MessageChannel>()
 
     private val ds = HikariDataSource().also {
         it.jdbcUrl = System.getenv("DB")
@@ -29,6 +33,24 @@ object Messages {
 
     init {
         initDB()
+
+        GlobalScope.launch {
+            while (true) {
+                delay(Duration.ofMinutes(5))
+
+                val channels = toUpdate.toList()
+                toUpdate.clear()
+
+                var count = 0
+                channels.forEach {
+                    count += index(it)
+                }
+
+                if (count != 0) {
+                    println("Periodically indexed ${channels.size} channel(s) with $count messages.")
+                }
+            }
+        }
     }
 
     fun initDB() {
@@ -78,6 +100,10 @@ object Messages {
         initDB()
     }
 
+    fun scheduleIndex(channel: MessageChannel) {
+        toUpdate.add(channel)
+    }
+
     fun insertMessages(messages: List<StoredMessage>) {
         ds.connection.use { connection ->
             val statement =
@@ -111,8 +137,10 @@ object Messages {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    suspend fun index(channel: MessageChannel, progressCallback: ((blocked: Boolean, count: Int) -> Unit)?): Int {
+    suspend fun index(
+        channel: MessageChannel,
+        progressCallback: ((blocked: Boolean, count: Int) -> Unit)? = null
+    ): Int {
         val lock = locks.getOrPut(channel.idLong) { Mutex() }
 
         if (!lock.tryLock()) {
@@ -203,13 +231,13 @@ object Messages {
         }
     }
 
-    fun setLastIndexTimestamp(channel: MessageChannel, timestamp: OffsetDateTime) {
+    fun setLastIndexTimestamp(channel: MessageChannel, time: OffsetDateTime) {
         ds.connection.use { connection ->
             val statement = connection.prepareStatement(
                 "INSERT INTO last_update VALUES (?, ?) ON CONFLICT (channel) DO UPDATE SET timestamp = ?"
             )
 
-            val timestamp = Timestamp.valueOf(timestamp.atZoneSimilarLocal(ZoneId.of("UTC")).toLocalDateTime())
+            val timestamp = Timestamp.valueOf(time.atZoneSimilarLocal(ZoneId.of("UTC")).toLocalDateTime())
 
             statement.setLong(1, channel.idLong)
             statement.setTimestamp(2, timestamp)

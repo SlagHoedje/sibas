@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.MessageChannel
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent
@@ -38,6 +39,10 @@ fun main() {
 
     jda.listener<MessageUpdateEvent> { event ->
         Messages.updateMessage(event.message)
+    }
+
+    jda.listener<MessageReceivedEvent> { event ->
+        Messages.scheduleIndex(event.channel)
     }
 
     jda.commands {
@@ -102,11 +107,8 @@ fun main() {
         command("leaderboard") {
             subCommand(group = "channel", name = "messages", description = "Top channels with the most messages") {
                 executor {
-                    val count = preIndex()
-
                     val leaderboard = Messages.channelMessagesLeaderboard()
 
-                    message("Indexed all channels. _($count messages)_")
                     embed(Embed {
                         title = "Most messages in channels"
                         description = leaderboard.joinToString("\n") {
@@ -118,11 +120,8 @@ fun main() {
 
             subCommand(group = "channel", name = "upvotes", description = "Top channels with the most upvotes") {
                 executor {
-                    val count = preIndex()
-
                     val leaderboard = Messages.channelUpvotesLeaderboard()
 
-                    message("Indexed all channels. _($count messages)_")
                     embed(Embed {
                         title = "Most upvoted channels"
                         description = leaderboard.joinToString("\n") {
@@ -134,11 +133,8 @@ fun main() {
 
             subCommand(group = "user", name = "messages", description = "Top users with the most messages") {
                 executor {
-                    val count = preIndex()
-
                     val leaderboard = Messages.userMessagesLeaderboard()
 
-                    message("Indexed all channels. _($count messages)_")
                     embed(Embed {
                         title = "Most messages by users"
                         description = leaderboard.joinToString("\n") {
@@ -150,11 +146,8 @@ fun main() {
 
             subCommand(group = "user", name = "upvotes", description = "Top users with the most upvotes") {
                 executor {
-                    val count = preIndex()
-
                     val leaderboard = Messages.userUpvoteLeaderboard()
 
-                    message("Indexed all channels. _($count messages)_")
                     embed(Embed {
                         title = "Most upvoted users"
                         description = leaderboard.joinToString("\n") {
@@ -168,12 +161,9 @@ fun main() {
                 option(Option<MessageChannel>("channel", "Channel to scan"))
 
                 executor {
-                    val count = preIndex()
-
                     val channel = messageChannel("channel")
                     val leaderboard = Messages.messageUpvoteLeaderboard(channel)
 
-                    message("Indexed all channels. _($count messages)_")
                     embed(Embed {
                         title = "Most upvoted messages${if (channel != null) " in #${channel.name}" else ""}"
                         description = leaderboard.withIndex().joinToString("\n") { (i, spot) ->
