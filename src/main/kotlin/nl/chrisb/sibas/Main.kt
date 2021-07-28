@@ -132,17 +132,16 @@ fun main() {
                         )
                     }
 
-                    field()
-
                     field(
                         "Reactions received",
-                        profile.reactions.joinToString("\n") { "${it.first} ${it.second}" }
-
+                        profile.reactions.joinToString("\n") { "${it.first} ${it.second}" },
+                        inline = false
                     )
 
                     field(
                         "Messages sent",
-                        profile.channelMessages.joinToString("\n") { "<#${it.first}>: ${it.second} messages" }
+                        profile.channelMessages.joinToString("\n") { "<#${it.first}>: ${it.second} messages" },
+                        inline = false
                     )
                 })
             }
