@@ -48,13 +48,16 @@ fun main() {
                 val code = parseRunCommand(content)
 
                 val result = code.run()
-                println(result)
 
                 val message = if (result.compileOutput?.code ?: 0 != 0) {
                     "**ERROR!**\n" +
-                            "``` ${result.compileOutput.output.removeSuffix("\n")} ```"
+                            "```\n${
+                                result.compileOutput.output.replace("`", "`\u200b").trim()
+                            }\n```"
                 } else {
-                    "``` ${result.output.output.removeSuffix("\n")} ```"
+                    "```\n${
+                        result.output.output.replace("`", "`\u200b").trim()
+                    }\n```"
                 }
 
                 event.message.reply(message).queue()
