@@ -37,14 +37,18 @@ annotation class Executor
 @MustBeDocumented
 annotation class Description(val description: String)
 
+@Target(AnnotationTarget.VALUE_PARAMETER)
+@MustBeDocumented
+annotation class Choices(vararg val choices: String)
+
 class CommandFail(message: String) : Exception(message)
 
 class ExecutableCommand(private val executor: KFunction<*>) {
     val options = mutableListOf<OptionData>()
 
     init {
-        executor.valueParameters.forEach {
-            val type = when (it.type.javaType) {
+        executor.valueParameters.forEach { parameter ->
+            val type = when (parameter.type.javaType) {
                 String::class.java -> OptionType.STRING
                 Long::class.java -> OptionType.INTEGER
                 Boolean::class.java -> OptionType.BOOLEAN
@@ -54,15 +58,24 @@ class ExecutableCommand(private val executor: KFunction<*>) {
                 IMentionable::class.java -> OptionType.MENTIONABLE
                 CommandHook::class.java -> return@forEach
                 else -> {
-                    println("Unknown option type at $executor: ${it.type}")
+                    println("Unknown option type at $executor: ${parameter.type}")
                     return@forEach
                 }
             }
 
-            val required = !it.type.isMarkedNullable
-            val description = it.findAnnotation<Description>()?.description ?: "No description."
+            val required = !parameter.type.isMarkedNullable
+            val description = parameter.findAnnotation<Description>()?.description ?: "No description."
+            val choices = parameter.findAnnotation<Choices>()
+                ?.choices
+                ?.map { net.dv8tion.jda.api.interactions.commands.Command.Choice(it, it) }
 
-            options.add(OptionData(type, it.name!!, description).setRequired(required))
+            val option = OptionData(type, parameter.name!!, description).setRequired(required)
+
+            if (choices != null) {
+                option.addChoices(choices)
+            }
+
+            options.add(option)
         }
     }
 
