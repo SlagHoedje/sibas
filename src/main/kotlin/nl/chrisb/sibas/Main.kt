@@ -17,7 +17,7 @@ fun main() {
             ?: throw RuntimeException("Environment variable DISCORD_TOKEN should contain the discord bot token")
     )
         .injectKTX()
-        .setActivity(Activity.playing("Tetris"))
+        .setActivity(Activity.playing("Peggle"))
         .build()
 
 
