@@ -329,6 +329,7 @@ object Messages {
                         "        AND r.name = ?\n" +
                         "      GROUP BY m.author) AS reactions\n" +
                         "WHERE messages.author = reactions.author\n" +
+                        "  AND messages.count >= 100\n" +
                         "ORDER BY ratio DESC\n" +
                         "LIMIT 20;"
             )
