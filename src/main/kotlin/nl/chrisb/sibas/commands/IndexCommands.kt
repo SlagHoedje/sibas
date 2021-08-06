@@ -8,7 +8,7 @@ import nl.chrisb.sibas.Messages
 @Command(name = "index", description = "Index messages of a channel")
 object IndexCommand {
     @Executor
-    suspend fun executor(hook: CommandHook, channel: GuildChannel) {
+    suspend fun executor(hook: CommandHook, @Description("The channel to index") channel: GuildChannel) {
         val messageChannel = channel as? MessageChannel ?: hook.fail("That's not a message channel!")
         hook.message("Indexing <#${messageChannel.id}>...")
 
