@@ -95,6 +95,8 @@ class ExecutableCommand(private val executor: KFunction<*>) {
 }
 
 fun JDA.registerCommands(vararg commands: Any) {
+    val registered = mutableListOf<String>()
+
     listener<GuildReadyEvent> { event ->
         event.guild.updateCommands {
             for (command in commands) {
@@ -149,29 +151,33 @@ fun JDA.registerCommands(vararg commands: Any) {
                     }
                 }
 
-                onCommand(annotation.name) { slashCommandEvent ->
-                    val hook = CommandHook(slashCommandEvent)
+                if (!registered.contains(annotation.name)) {
+                    registered.add(annotation.name)
 
-                    try {
-                        (subCommands.filter { it.first == slashCommandEvent.subcommandGroup ?: "" }
-                            .find { it.second.name == slashCommandEvent.subcommandName }
-                            ?.third ?: executableCommand)
-                            ?.call(command, hook, slashCommandEvent)
-                            ?: run { hook.message("**ERROR!** This command is not executable.") }
-                    } catch (e: InvocationTargetException) {
-                        val ex = e.targetException
+                    onCommand(annotation.name) { slashCommandEvent ->
+                        val hook = CommandHook(slashCommandEvent)
 
-                        if (ex !is CommandFail) {
-                            ex.printStackTrace()
+                        try {
+                            (subCommands.filter { it.first == slashCommandEvent.subcommandGroup ?: "" }
+                                .find { it.second.name == slashCommandEvent.subcommandName }
+                                ?.third ?: executableCommand)
+                                ?.call(command, hook, slashCommandEvent)
+                                ?: run { hook.message("**ERROR!** This command is not executable.") }
+                        } catch (e: InvocationTargetException) {
+                            val ex = e.targetException
+
+                            if (ex !is CommandFail) {
+                                ex.printStackTrace()
+                            }
+
+                            hook.message("**ERROR!** ${ex.message}")
+                        } catch (e: Throwable) {
+                            if (e !is CommandFail) {
+                                e.printStackTrace()
+                            }
+
+                            hook.message("**ERROR!** ${e.message}")
                         }
-
-                        hook.message("**ERROR!** ${ex.message}")
-                    } catch (e: Throwable) {
-                        if (e !is CommandFail) {
-                            e.printStackTrace()
-                        }
-
-                        hook.message("**ERROR!** ${e.message}")
                     }
                 }
             }
