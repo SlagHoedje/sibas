@@ -330,7 +330,7 @@ object Messages {
                         "      GROUP BY m.author) AS reactions\n" +
                         "WHERE messages.author = reactions.author\n" +
                         "ORDER BY ratio DESC\n" +
-                        "LIMIT 30;"
+                        "LIMIT 20;"
             )
 
             statement.setString(1, reaction)
@@ -362,7 +362,7 @@ object Messages {
                         "      GROUP BY m.author) AS downvotes\n" +
                         "WHERE upvotes.author = downvotes.author\n" +
                         "ORDER BY ratio DESC\n" +
-                        "LIMIT 30;"
+                        "LIMIT 20;"
             )
 
             val leaderboard = mutableListOf<Pair<Long, Float>>()
