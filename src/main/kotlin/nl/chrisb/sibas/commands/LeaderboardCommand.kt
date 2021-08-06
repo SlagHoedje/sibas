@@ -83,6 +83,48 @@ object LeaderboardCommand {
         })
     }
 
+    @Command(group = "user", name = "upvoteratio", description = "Top users with the highest message to upvote ratio")
+    fun userUpvoteRatio(hook: CommandHook) {
+        userReactionRatio(hook, "upvote")
+    }
+
+    @Command(
+        group = "user",
+        name = "downvoteratio",
+        description = "Top users with the highest message to downvote ratio"
+    )
+    fun userDownvoteRatio(hook: CommandHook) {
+        userReactionRatio(hook, "downvote")
+    }
+
+    private fun userReactionRatio(hook: CommandHook, reaction: String) {
+        hook.defer()
+
+        val leaderboard = Messages.userReactionMessageRatioLeaderboard(reaction)
+
+        hook.embed(Embed {
+            title = "Highest $reaction to message ratios"
+            description = leaderboard.joinToString("\n") {
+                "<@${it.first}>: ${"%.4f".format(it.second)} " +
+                        "(1 upvote per ${"%.2f".format(1f / it.second)} messages)"
+            }
+        })
+    }
+
+    @Command(group = "user", name = "updown", description = "Top users with the highest upvote to downvote ratio")
+    fun userUpvoteDownvoteRatio(hook: CommandHook) {
+        hook.defer()
+
+        val leaderboard = Messages.userUpvoteDownvoteRatioLeaderboard()
+
+        hook.embed(Embed {
+            title = "Highest upvote to downvote ratios"
+            description = leaderboard.joinToString("\n") {
+                "<@${it.first}>: ${"%.2f".format(it.second)} upvotes per downvote"
+            }
+        })
+    }
+
     @Command(group = "message", name = "upvotes", description = "Top messages with the most upvotes")
     fun messageUpvotes(hook: CommandHook, channel: GuildChannel?) {
         messageReactions(hook, channel, "upvote")

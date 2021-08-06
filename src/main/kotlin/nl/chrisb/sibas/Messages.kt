@@ -316,6 +316,64 @@ object Messages {
                     "LIMIT 30\n", reaction
         )
 
+    fun userReactionMessageRatioLeaderboard(reaction: String): List<Pair<Long, Float>> {
+        ds.connection.use { connection ->
+            val statement = connection.prepareStatement(
+                "SELECT messages.author, (CAST(reactions.count AS FLOAT) / CAST(messages.count AS FLOAT)) AS ratio\n" +
+                        "FROM (SELECT m.author, COUNT(m.id) AS count\n" +
+                        "      FROM messages m\n" +
+                        "      GROUP BY m.author) AS messages,\n" +
+                        "     (SELECT m.author, SUM(r.count) AS count\n" +
+                        "      FROM messages m, reactions r\n" +
+                        "      WHERE m.id = r.message\n" +
+                        "        AND r.name = ?\n" +
+                        "      GROUP BY m.author) AS reactions\n" +
+                        "WHERE messages.author = reactions.author\n" +
+                        "ORDER BY ratio DESC\n" +
+                        "LIMIT 30;"
+            )
+
+            statement.setString(1, reaction)
+            statement.execute()
+
+            val leaderboard = mutableListOf<Pair<Long, Float>>()
+            statement.forEachResult {
+                leaderboard.add(it.getLong(1) to it.getFloat(2))
+            }
+
+            return leaderboard
+        }
+    }
+
+    fun userUpvoteDownvoteRatioLeaderboard(): List<Pair<Long, Float>> {
+        ds.connection.use { connection ->
+            val statement = connection.createStatement()
+            statement.execute(
+                "SELECT upvotes.author, (CAST(upvotes.count AS FLOAT) / CAST(downvotes.count AS FLOAT)) AS ratio\n" +
+                        "FROM (SELECT m.author, SUM(r.count) AS count\n" +
+                        "      FROM messages m, reactions r\n" +
+                        "      WHERE m.id = r.message\n" +
+                        "        AND r.name = 'upvote'\n" +
+                        "      GROUP BY m.author) AS upvotes,\n" +
+                        "     (SELECT m.author, SUM(r.count) AS count\n" +
+                        "      FROM messages m, reactions r\n" +
+                        "      WHERE m.id = r.message\n" +
+                        "        AND r.name = 'downvote'\n" +
+                        "      GROUP BY m.author) AS downvotes\n" +
+                        "WHERE upvotes.author = downvotes.author\n" +
+                        "ORDER BY ratio DESC\n" +
+                        "LIMIT 30;"
+            )
+
+            val leaderboard = mutableListOf<Pair<Long, Float>>()
+            statement.forEachResult {
+                leaderboard.add(it.getLong(1) to it.getFloat(2))
+            }
+
+            return leaderboard
+        }
+    }
+
     fun messageReactionLeaderboard(reaction: String, channel: MessageChannel? = null): List<Pair<StoredMessage, Int>> {
         ds.connection.use { connection ->
             val statement = if (channel != null) {
