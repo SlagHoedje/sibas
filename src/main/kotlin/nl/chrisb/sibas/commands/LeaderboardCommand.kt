@@ -106,7 +106,7 @@ object LeaderboardCommand {
             title = "Highest $reaction to message ratios"
             description = leaderboard.joinToString("\n") {
                 "<@${it.first}>: ${"%.4f".format(it.second)} " +
-                        "(1 upvote per ${"%.2f".format(1f / it.second)} messages)"
+                        "(1 $reaction per ${"%.2f".format(1f / it.second)} messages)"
             }
         })
     }
