@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import net.dv8tion.jda.api.interactions.commands.OptionType
 import net.dv8tion.jda.api.interactions.commands.build.OptionData
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
+import net.dv8tion.jda.api.interactions.components.ActionRow
 import nl.chrisb.sibas.Messages
 import nl.chrisb.sibas.isAdmin
 import java.lang.reflect.InvocationTargetException
@@ -233,21 +234,45 @@ class CommandHook(val event: SlashCommandEvent) {
         }
     }
 
-    fun message(message: String) {
+    fun messageEphemeral(message: String) {
+        if (!event.interaction.isAcknowledged) {
+            event.reply(message).setEphemeral(true).queue()
+        } else {
+            message(message)
+        }
+    }
+
+    fun message(message: String, actions: Collection<ActionRow>? = null) {
         if (event.interaction.isAcknowledged) {
             if (Duration.between(replyTime, Instant.now()).toMinutes() >= 14) {
                 if (secondMessage == null) {
-                    event.channel.sendMessage(message).queue {
+                    event.channel.sendMessage(message).also {
+                        if (actions != null) {
+                            it.setActionRows(actions)
+                        }
+                    }.queue {
                         secondMessage = it
                     }
                 } else {
-                    secondMessage!!.editMessage(message).queue()
+                    secondMessage!!.editMessage(message).also {
+                        if (actions != null) {
+                            it.setActionRows(actions)
+                        }
+                    }.queue()
                 }
             } else {
-                event.hook.editOriginal(message).queue()
+                event.hook.editOriginal(message).also {
+                    if (actions != null) {
+                        it.setActionRows(actions)
+                    }
+                }.queue()
             }
         } else {
-            event.reply(message).queue()
+            event.reply(message).also {
+                if (actions != null) {
+                    it.addActionRows(actions)
+                }
+            }.queue()
         }
     }
 
@@ -266,6 +291,12 @@ class CommandHook(val event: SlashCommandEvent) {
             } else {
                 event.replyEmbeds(embed).queue()
             }
+        }
+    }
+
+    fun actions(vararg actions: ActionRow) {
+        if (event.interaction.isAcknowledged) {
+            event.hook.editOriginalComponents(*actions).queue()
         }
     }
 }

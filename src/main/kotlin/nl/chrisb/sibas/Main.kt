@@ -5,11 +5,14 @@ import dev.minn.jda.ktx.listener
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.Member
+import net.dv8tion.jda.api.events.interaction.ButtonClickEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent
 import nl.chrisb.sibas.commands.*
+import nl.chrisb.sibas.games.common.InviteManager
+import nl.chrisb.sibas.games.common.MatchManager
 
 fun main() {
     val jda = JDABuilder.createLight(
@@ -66,6 +69,18 @@ fun main() {
         }
     }
 
+    jda.listener<ButtonClickEvent> { event ->
+        val id = event.button?.id
+
+        when {
+            id == "game:invite:accept" -> InviteManager.respond(event.interaction, event.user, true)
+            id == "game:invite:deny" -> InviteManager.respond(event.interaction, event.user, false)
+            id?.startsWith("game:action:") == true -> {
+                MatchManager.processButton(event.interaction, event.user, id.removePrefix("game:action:"))
+            }
+        }
+    }
+
     jda.registerCommands(
         IndexCommand,
         IndexAllCommand,
@@ -74,7 +89,9 @@ fun main() {
         StatsCommand,
 
         ProfileCommand,
-        LeaderboardCommand
+        LeaderboardCommand,
+
+        BattleCommand
     )
 
     Messages
