@@ -135,11 +135,19 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
 
         val turnPlayer = players[game.turn]
 
+        val turnText = (0 until 2).map {
+            if (winner == null && game.turn == it) {
+                "<@${players[it].id}> _(turn)_"
+            } else {
+                "<@${players[it].id}>"
+            }
+        }
+
         val text = """
-            `${game.symbol(0)}`: <@${players[0].id}>
-            `${game.symbol(1)}`: <@${players[1].id}>
+            `${game.symbol(0)}`: ${turnText[0]}
+            `${game.symbol(1)}`: ${turnText[1]}
         """.trimIndent() + "\n\n" + when {
-            timeout != null ->"<@${players[game.index(timeout)].id}> won due to timeout!"
+            timeout != null -> "<@${players[game.index(timeout)].id}> won due to timeout!"
             winner != null -> "<@${players[game.index(winner)].id}> won!"
             game.selected == null -> "<@${turnPlayer.id}>, select the board you want to play."
             else -> "It's your turn, <@${turnPlayer.id}>."
