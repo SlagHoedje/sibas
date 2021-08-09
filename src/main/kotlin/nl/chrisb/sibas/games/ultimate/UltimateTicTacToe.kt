@@ -1,6 +1,10 @@
 package nl.chrisb.sibas.games.ultimate
 
 import dev.minn.jda.ktx.Embed
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.entities.User
@@ -12,18 +16,30 @@ import nl.chrisb.sibas.games.common.MatchManager
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
+@Suppress("EXPERIMENTAL_IS_NOT_ENABLED")
+@OptIn(DelicateCoroutinesApi::class)
 class UltimateTicTacToe(players: List<User>) : Match(players) {
     override val name: String = "Ultimate Tic-Tac-Toe"
 
     private val game = Game()
     lateinit var message: Message
+    private var timer = 120
 
     override fun begin(channel: MessageChannel) {
         channel.sendMessage(Embed {
             title = name
         }).queue {
             message = it
-            updateMessage()
+            updateMessage(null)
+        }
+
+        GlobalScope.launch {
+            while (timer > 0) {
+                delay(1000)
+                timer--
+            }
+
+            updateMessage(game.symbol((game.turn + 1) % 2))
         }
     }
 
@@ -54,7 +70,7 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
             game.selected = index
 
             interaction.deferEdit().queue()
-            updateMessage()
+            updateMessage(null)
         } else {
             if (selectedBoard.get(x, y) != Symbol.Empty) {
                 interaction.reply("**ERROR!** This field has already been played.").setEphemeral(true).queue()
@@ -71,18 +87,19 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
             }
 
             game.nextTurn()
+            timer = 120
 
             interaction.deferEdit().queue()
-            updateMessage()
+            updateMessage(null)
         }
     }
 
-    private fun updateMessage() {
+    private fun updateMessage(timeout: Symbol?) {
         val boardImage = renderGame(game)
         val outputStream = ByteArrayOutputStream()
         ImageIO.write(boardImage, "png", outputStream)
 
-        val winner = game.board.winner
+        val winner = game.board.winner ?: timeout
 
         val actionRows = if (winner != null) {
             MatchManager.endMatch(this)
@@ -118,6 +135,7 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
             `${game.symbol(0)}`: <@${players[0].id}>
             `${game.symbol(1)}`: <@${players[1].id}>
         """.trimIndent() + "\n\n" + when {
+            timeout != null ->"<@${players[game.index(timeout)].id}> won due to timeout!"
             winner != null -> "<@${players[game.index(winner)].id}> won!"
             game.selected == null -> "<@${turnPlayer.id}>, select the board you want to play."
             else -> "It's your turn, <@${turnPlayer.id}>."
@@ -126,6 +144,10 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
         message.editMessage(Embed {
             title = name
             description = text
+
+            if (winner == null) {
+                footer("You have 2 minutes to make a move.")
+            }
         }).retainFiles(listOf())
             .addFile(outputStream.toByteArray(), "board.png")
             .setActionRows(actionRows)
