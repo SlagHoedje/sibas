@@ -37,6 +37,10 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
             while (timer > 0) {
                 delay(1000)
                 timer--
+
+                if (game.board.winner != null) {
+                    return@launch
+                }
             }
 
             updateMessage(game.symbol((game.turn + 1) % 2))
