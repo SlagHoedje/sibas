@@ -172,7 +172,7 @@ fun JDA.registerCommands(vararg commands: Any) {
                         val hook = CommandHook(slashCommandEvent)
 
                         try {
-                            (subCommands.filter { it.first == slashCommandEvent.subcommandGroup ?: "" }
+                            (subCommands.filter { it.first == (slashCommandEvent.subcommandGroup ?: "") }
                                 .find { it.second.name == slashCommandEvent.subcommandName }
                                 ?.third ?: executableCommand)
                                 ?.call(command, hook, slashCommandEvent)
@@ -279,11 +279,11 @@ class CommandHook(val event: SlashCommandEvent) {
     fun embed(embed: MessageEmbed) {
         if (Duration.between(replyTime, Instant.now()).toMinutes() >= 14) {
             if (secondMessage == null) {
-                event.channel.sendMessage(embed).queue {
+                event.channel.sendMessageEmbeds(embed).queue {
                     secondMessage = it
                 }
             } else {
-                secondMessage!!.editMessage(embed).queue()
+                secondMessage!!.editMessageEmbeds(embed).queue()
             }
         } else {
             if (event.interaction.isAcknowledged) {

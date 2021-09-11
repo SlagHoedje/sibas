@@ -25,7 +25,7 @@ class TicTacToe(players: List<User>) : Match(players) {
     private var turn = 0
 
     override fun begin(channel: MessageChannel) {
-        channel.sendMessage(Embed {
+        channel.sendMessageEmbeds(Embed {
             title = "Tic-Tac-Toe"
             description = message()
         }).setActionRows((0 until 3).map { y ->
@@ -129,19 +129,19 @@ class TicTacToe(players: List<User>) : Match(players) {
         }
 
         if (winner(previousTurn)) {
-            message.editMessage(Embed {
+            message.editMessageEmbeds(Embed {
                 title = "Tic-Tac-Toe"
                 description = "<@${players[previousTurn].id}> (`${symbol(previousTurn)}`) won!"
             }).queue()
             MatchManager.endMatch(this)
         } else if (field.all { it != Symbol.Empty }) {
-            message.editMessage(Embed {
+            message.editMessageEmbeds(Embed {
                 title = "Tic-Tac-Toe"
                 description = "It's a draw!"
             }).queue()
             MatchManager.endMatch(this)
         } else {
-            message.editMessage(Embed {
+            message.editMessageEmbeds(Embed {
                 title = "Tic-Tac-Toe"
                 description = message()
             }).queue()

@@ -26,7 +26,7 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
     private var timer = 120
 
     override fun begin(channel: MessageChannel) {
-        channel.sendMessage(Embed {
+        channel.sendMessageEmbeds(Embed {
             title = name
         }).queue {
             message = it
@@ -153,7 +153,7 @@ class UltimateTicTacToe(players: List<User>) : Match(players) {
             else -> "It's your turn, <@${turnPlayer.id}>."
         }
 
-        message.editMessage(Embed {
+        message.editMessageEmbeds(Embed {
             title = name
             description = text
 
