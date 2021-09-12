@@ -1,6 +1,5 @@
 package nl.chrisb.sibas
 
-import com.zaxxer.hikari.HikariDataSource
 import dev.minn.jda.ktx.await
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -8,8 +7,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.time.delay
 import net.dv8tion.jda.api.entities.*
-import java.sql.ResultSet
-import java.sql.Statement
+import org.intellij.lang.annotations.Language
 import java.sql.Timestamp
 import java.time.*
 
@@ -18,16 +16,6 @@ import java.time.*
 object Messages {
     private val locks = mutableMapOf<Long, Mutex>()
     private val toUpdate = mutableListOf<MessageChannel>()
-
-    private val ds = HikariDataSource().also {
-        it.jdbcUrl = System.getenv("DB")
-            ?: throw RuntimeException("Environment variable DB should contain the jdbc database URL")
-        it.username = System.getenv("DB_USER")
-            ?: throw RuntimeException("Environment variable DB_USER should contain the database username")
-        it.password = System.getenv("DB_PASS")
-            ?: throw RuntimeException("Environment variable DB_PASS should contain the database password")
-        it.maximumPoolSize = 3
-    }
 
     init {
         initDB()
@@ -51,10 +39,9 @@ object Messages {
         }
     }
 
-    fun initDB() {
-        ds.connection.use { connection ->
-            val statement = connection.createStatement()
-            statement.executeUpdate(
+    private fun initDB() {
+        Database.poolConnection().use { connection ->
+            connection.prepare(
                 "CREATE TABLE IF NOT EXISTS messages(" +
                         "id BIGINT NOT NULL, " +
                         "author BIGINT NOT NULL, " +
@@ -63,9 +50,9 @@ object Messages {
                         "contents TEXT, " +
                         "PRIMARY KEY (id)" +
                         ")"
-            )
+            ).exec()
 
-            statement.executeUpdate(
+            connection.prepare(
                 "CREATE TABLE IF NOT EXISTS reactions(" +
                         "message BIGINT NOT NULL, " +
                         "name TEXT NOT NULL, " +
@@ -73,26 +60,25 @@ object Messages {
                         "count INT NOT NULL, " +
                         "PRIMARY KEY (message, id)" +
                         ")"
-            )
+            ).exec()
 
-            statement.executeUpdate(
+            connection.prepare(
                 "CREATE TABLE IF NOT EXISTS last_update(" +
                         "channel BIGINT NOT NULL, " +
                         "timestamp TIMESTAMP NOT NULL, " +
                         "PRIMARY KEY (channel)" +
                         ")"
-            )
+            ).exec()
         }
     }
 
     fun clearDB() {
-        ds.connection.use { connection ->
-            val statement = connection.createStatement()
-            statement.execute(
+        Database.poolConnection().use { connection ->
+            connection.prepare(
                 "DROP TABLE IF EXISTS messages;" +
                         "DROP TABLE IF EXISTS reactions;" +
                         "DROP TABLE IF EXISTS last_update;"
-            )
+            ).exec()
         }
 
         initDB()
@@ -102,36 +88,35 @@ object Messages {
         toUpdate.add(channel)
     }
 
-    fun insertMessages(messages: List<StoredMessage>) {
-        ds.connection.use { connection ->
-            val statement =
-                connection.prepareStatement("INSERT INTO messages VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING")
+    private fun insertMessages(messages: List<StoredMessage>) {
+        Database.poolConnection().use { connection ->
+            val statement = connection
+                .prepare("INSERT INTO messages VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING")
+                .batched()
+
             for (message in messages) {
-                statement.setLong(1, message.id)
-                statement.setLong(2, message.author)
-                statement.setLong(3, message.channel)
-                statement.setTimestamp(4, message.timestamp)
-                statement.setString(5, message.contents)
-                statement.addBatch()
+                statement
+                    .args(message.id, message.author, message.channel, message.timestamp, message.contents)
+                    .batch()
             }
 
-            statement.executeBatch()
+            statement.exec()
         }
     }
 
-    fun insertReactions(reactions: List<StoredReaction>) {
-        ds.connection.use { connection ->
-            val statement =
-                connection.prepareStatement("INSERT INTO reactions VALUES (?, ?, ?, ?) ON CONFLICT (message, id) DO NOTHING")
+    private fun insertReactions(reactions: List<StoredReaction>) {
+        Database.poolConnection().use { connection ->
+            val statement = connection
+                .prepare("INSERT INTO reactions VALUES (?, ?, ?, ?) ON CONFLICT (message, id) DO NOTHING")
+                .batched()
+
             for (reaction in reactions) {
-                statement.setLong(1, reaction.message)
-                statement.setString(2, reaction.name)
-                statement.setLong(3, reaction.id ?: -1)
-                statement.setInt(4, reaction.count)
-                statement.addBatch()
+                statement
+                    .args(reaction.message, reaction.name, reaction.id ?: -1, reaction.count)
+                    .batch()
             }
 
-            statement.executeBatch()
+            statement.exec()
         }
     }
 
@@ -216,77 +201,54 @@ object Messages {
     }
 
     fun stats(): Stats {
-        ds.connection.use { connection ->
-            val statement = connection.createStatement()
-
-            statement.execute("SELECT COUNT(*) FROM messages m")
-            val messages = statement.nextResult()?.getInt(1) ?: -1
-
-            statement.execute("SELECT SUM(count) FROM reactions")
-            val reactions = statement.nextResult()?.getInt(1) ?: -1
+        Database.poolConnection().use { connection ->
+            val messages = connection.prepare("SELECT COUNT(*) FROM messages").exec().firstOrNull()?.getInt(1) ?: -1
+            val reactions = connection.prepare("SELECT SUM(count) FROM reactions").exec().firstOrNull()?.getInt(1) ?: -1
 
             return Stats(messages, reactions)
         }
     }
 
-    fun setLastIndexTimestamp(channel: MessageChannel, time: OffsetDateTime) {
-        ds.connection.use { connection ->
-            val statement = connection.prepareStatement(
-                "INSERT INTO last_update VALUES (?, ?) ON CONFLICT (channel) DO UPDATE SET timestamp = ?"
-            )
-
+    private fun setLastIndexTimestamp(channel: MessageChannel, time: OffsetDateTime) {
+        Database.poolConnection().use { connection ->
             val timestamp = Timestamp.valueOf(time.atZoneSimilarLocal(ZoneId.of("UTC")).toLocalDateTime())
 
-            statement.setLong(1, channel.idLong)
-            statement.setTimestamp(2, timestamp)
-            statement.setTimestamp(3, timestamp)
-
-            statement.execute()
+            connection
+                .prepare("INSERT INTO last_update VALUES (?, ?) ON CONFLICT (channel) DO UPDATE SET timestamp = ?")
+                .args(channel.idLong, timestamp, timestamp)
+                .exec()
         }
     }
 
-    fun lastIndexTimestamp(channel: MessageChannel): OffsetDateTime {
-        ds.connection.use { connection ->
-            val statement = connection.prepareStatement("SELECT timestamp FROM last_update WHERE channel = ?")
-            statement.setLong(1, channel.idLong)
-            statement.execute()
-
-            return statement.nextResult()
+    private fun lastIndexTimestamp(channel: MessageChannel): OffsetDateTime =
+        Database.poolConnection().use { connection ->
+            connection.prepare("SELECT timestamp FROM last_update WHERE channel = ?")
+                .args(channel.idLong)
+                .exec()
+                .firstOrNull()
                 ?.getTimestamp(1)
                 ?.toLocalDateTime()
                 ?.atOffset(ZoneOffset.UTC)
                 ?: OffsetDateTime.MIN
         }
-    }
 
-    private fun getLeaderboard(sql: String): List<Pair<Long, Int>> {
-        ds.connection.use { connection ->
-            val statement = connection.createStatement()
-            statement.execute(sql)
-
-            val leaderboard = mutableListOf<Pair<Long, Int>>()
-            statement.forEachResult {
-                leaderboard.add(it.getLong(1) to it.getInt(2))
-            }
-
-            return leaderboard
+    private fun getLeaderboard(@Language("SQL") sql: String): List<Pair<Long, Int>> =
+        Database.poolConnection().use { connection ->
+            connection.prepare(sql)
+                .exec()
+                .map { it.getLong(1) to it.getInt(2) }
+                .toList()
         }
-    }
 
-    private fun getReactionLeaderboard(sql: String, reaction: String): List<Pair<Long, Int>> {
-        ds.connection.use { connection ->
-            val statement = connection.prepareStatement(sql)
-            statement.setString(1, reaction)
-            statement.execute()
 
-            val leaderboard = mutableListOf<Pair<Long, Int>>()
-            statement.forEachResult {
-                leaderboard.add(it.getLong(1) to it.getInt(2))
-            }
-
-            return leaderboard
+    private fun getReactionLeaderboard(@Language("SQL") sql: String, reaction: String): List<Pair<Long, Int>> =
+        Database.poolConnection().use { connection ->
+            connection.prepare(sql)
+                .args(reaction)
+                .exec()
+                .map { it.getLong(1) to it.getInt(2) }
+                .toList()
         }
-    }
 
     fun channelMessagesLeaderboard() =
         getLeaderboard("SELECT channel, COUNT(*) as count FROM messages GROUP BY channel ORDER BY count DESC")
@@ -316,9 +278,9 @@ object Messages {
                     "LIMIT 30\n", reaction
         )
 
-    fun userReactionMessageRatioLeaderboard(reaction: String): List<Pair<Long, Float>> {
-        ds.connection.use { connection ->
-            val statement = connection.prepareStatement(
+    fun userReactionMessageRatioLeaderboard(reaction: String): List<Pair<Long, Float>> =
+        Database.poolConnection().use { connection ->
+            connection.prepare(
                 "SELECT messages.author, (CAST(reactions.count AS FLOAT) / CAST(messages.count AS FLOAT)) AS ratio\n" +
                         "FROM (SELECT m.author, COUNT(m.id) AS count\n" +
                         "      FROM messages m\n" +
@@ -333,23 +295,15 @@ object Messages {
                         "ORDER BY ratio DESC\n" +
                         "LIMIT 20;"
             )
-
-            statement.setString(1, reaction)
-            statement.execute()
-
-            val leaderboard = mutableListOf<Pair<Long, Float>>()
-            statement.forEachResult {
-                leaderboard.add(it.getLong(1) to it.getFloat(2))
-            }
-
-            return leaderboard
+                .args(reaction)
+                .exec()
+                .map { it.getLong(1) to it.getFloat(2) }
+                .toList()
         }
-    }
 
-    fun userUpvoteDownvoteRatioLeaderboard(): List<Pair<Long, Float>> {
-        ds.connection.use { connection ->
-            val statement = connection.createStatement()
-            statement.execute(
+    fun userUpvoteDownvoteRatioLeaderboard(): List<Pair<Long, Float>> =
+        Database.poolConnection().use { connection ->
+            connection.prepare(
                 "SELECT upvotes.author, (CAST(upvotes.count AS FLOAT) / CAST(downvotes.count AS FLOAT)) AS ratio\n" +
                         "FROM (SELECT m.author, SUM(r.count) AS count\n" +
                         "      FROM messages m, reactions r\n" +
@@ -365,20 +319,15 @@ object Messages {
                         "ORDER BY ratio DESC\n" +
                         "LIMIT 20;"
             )
-
-            val leaderboard = mutableListOf<Pair<Long, Float>>()
-            statement.forEachResult {
-                leaderboard.add(it.getLong(1) to it.getFloat(2))
-            }
-
-            return leaderboard
+                .exec()
+                .map { it.getLong(1) to it.getFloat(2) }
+                .toList()
         }
-    }
 
-    fun messageReactionLeaderboard(reaction: String, channel: MessageChannel? = null): List<Pair<StoredMessage, Int>> {
-        ds.connection.use { connection ->
+    fun messageReactionLeaderboard(reaction: String, channel: MessageChannel? = null): List<Pair<StoredMessage, Int>> =
+        Database.poolConnection().use { connection ->
             val statement = if (channel != null) {
-                val statement = connection.prepareStatement(
+                connection.prepare(
                     "SELECT m.*, MAX(r.count) as count\n" +
                             "FROM messages m,\n" +
                             "     reactions r\n" +
@@ -389,14 +338,9 @@ object Messages {
                             "ORDER BY count DESC\n" +
                             "LIMIT 10;\n"
                 )
-
-                statement.setString(1, reaction)
-                statement.setLong(2, channel.idLong)
-                statement.execute()
-
-                statement
+                    .args(reaction, channel.idLong)
             } else {
-                val statement = connection.prepareStatement(
+                connection.prepare(
                     "SELECT m.*, MAX(r.count) as count\n" +
                             "FROM messages m,\n" +
                             "     reactions r\n" +
@@ -406,47 +350,42 @@ object Messages {
                             "ORDER BY count DESC\n" +
                             "LIMIT 10;\n"
                 )
-                statement.setString(1, reaction)
-                statement.execute()
-
-                statement
+                    .args(reaction)
             }
 
-            val leaderboard = mutableListOf<Pair<StoredMessage, Int>>()
-            statement.forEachResult {
-                val message = StoredMessage(
-                    it.getLong(1),
-                    it.getLong(2),
-                    it.getLong(3),
-                    it.getTimestamp(4),
-                    it.getString(5)
-                )
+            statement
+                .exec()
+                .map {
+                    val message = StoredMessage(
+                        it.getLong(1),
+                        it.getLong(2),
+                        it.getLong(3),
+                        it.getTimestamp(4),
+                        it.getString(5)
+                    )
 
-                leaderboard.add(message to it.getInt(6))
-            }
-
-            return leaderboard
+                    message to it.getInt(6)
+                }
+                .toList()
         }
-    }
 
     fun updateMessage(message: Message) {
-        ds.connection.use { connection ->
-            val statement = connection.prepareStatement(
+        Database.poolConnection().use { connection ->
+            connection.prepare(
                 "DELETE FROM messages WHERE id = ?;" +
                         "DELETE FROM reactions WHERE message = ?;"
             )
-            statement.setLong(1, message.idLong)
-            statement.setLong(2, message.idLong)
-            statement.execute()
+                .args(message.idLong, message.idLong)
+                .exec()
         }
 
         insertMessages(listOf(message.toStoredMessage()))
         insertReactions(message.reactions.map { it.toStoredReaction() })
     }
 
-    private fun userReactions(user: User): List<Pair<String, Int>> {
-        ds.connection.use { connection ->
-            val statement = connection.prepareStatement(
+    private fun userReactions(user: User): List<Pair<String, Int>> =
+        Database.poolConnection().use { connection ->
+            connection.prepare(
                 "SELECT r.name, r.id, SUM(r.count) AS count\n" +
                         "FROM reactions r,\n" +
                         "     messages m\n" +
@@ -456,26 +395,21 @@ object Messages {
                         "ORDER BY count DESC\n" +
                         "LIMIT 15;"
             )
+                .args(user.idLong)
+                .exec()
+                .map {
+                    val name = it.getString(1)
+                    val id = it.getLong(2)
+                    val count = it.getInt(3)
 
-            statement.setLong(1, user.idLong)
-            statement.execute()
-
-            val leaderboard = mutableListOf<Pair<String, Int>>()
-            statement.forEachResult {
-                val name = it.getString(1)
-                val id = it.getLong(2)
-                val count = it.getInt(3)
-
-                leaderboard.add((if (id == -1L) name else "<:$name:$id>") to count)
-            }
-
-            return leaderboard
+                    (if (id == -1L) name else "<:$name:$id>") to count
+                }
+                .toList()
         }
-    }
 
-    private fun userChannelMessages(user: User): List<Pair<Long, Int>> {
-        ds.connection.use { connection ->
-            val statement = connection.prepareStatement(
+    private fun userChannelMessages(user: User): List<Pair<Long, Int>> =
+        Database.poolConnection().use { connection ->
+            connection.prepare(
                 "SELECT channel, COUNT(id) AS count\n" +
                         "FROM messages\n" +
                         "WHERE author = ?\n" +
@@ -483,18 +417,11 @@ object Messages {
                         "ORDER BY count DESC\n" +
                         "LIMIT 15;\n"
             )
-
-            statement.setLong(1, user.idLong)
-            statement.execute()
-
-            val leaderboard = mutableListOf<Pair<Long, Int>>()
-            statement.forEachResult {
-                leaderboard.add(it.getLong(1) to it.getInt(2))
-            }
-
-            return leaderboard
+                .args(user.idLong)
+                .exec()
+                .map { it.getLong(1) to it.getInt(2) }
+                .toList()
         }
-    }
 
     fun profile(member: Member?, user: User): Profile {
         return Profile(
@@ -548,15 +475,3 @@ fun MessageReaction.toStoredReaction() = StoredReaction(
     if (reactionEmote.isEmoji) null else reactionEmote.idLong,
     count
 )
-
-fun Statement.nextResult() = if (!resultSet.next()) {
-    null
-} else {
-    resultSet
-}
-
-fun Statement.forEachResult(consumer: (ResultSet) -> Unit) {
-    while (resultSet.next()) {
-        consumer(resultSet)
-    }
-}
