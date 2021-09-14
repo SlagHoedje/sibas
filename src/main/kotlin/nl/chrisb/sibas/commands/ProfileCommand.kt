@@ -28,17 +28,19 @@ object ProfileCommand {
                 description = "server booster pog"
             }
 
-            field(
-                "Account created",
-                "<t:${profile.created.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>"
-            )
+            val created = profile.created.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)
+            val joined = profile.joined?.toLocalDateTime()?.toEpochSecond(ZoneOffset.UTC)
 
-            if (profile.joined != null) {
-                field(
-                    "Joined server",
-                    "<t:${profile.joined.toLocalDateTime().toEpochSecond(ZoneOffset.UTC)}:D>"
-                )
-            }
+            field(
+                "Statistics",
+                (if (joined != null) "Joined server: <t:${joined}:D>\n" else "") +
+                        """
+                            Account created: <t:${created}:D>
+                            Total reactions received: ${profile.totalReactions}
+                            Total messages sent: ${profile.totalMessages}
+                        """.trimIndent(),
+                inline = false
+            )
 
             field(
                 "Reactions received",

@@ -423,12 +423,38 @@ object Messages {
                 .toList()
         }
 
+    private fun totalUserMessages(user: User) = Database.poolConnection().use { connection ->
+        connection.prepare("SELECT COUNT(id) FROM messages WHERE author = ?")
+            .args(user.idLong)
+            .exec()
+            .firstOrNull()
+            ?.getInt(1)
+            ?: 0
+    }
+
+    private fun totalUserReactions(user: User) = Database.poolConnection().use { connection ->
+        connection.prepare(
+            "SELECT SUM(r.count)\n" +
+                    "FROM reactions r,\n" +
+                    "     messages m\n" +
+                    "WHERE m.author = ?\n" +
+                    "AND m.id = r.message\n"
+        )
+            .args(user.idLong)
+            .exec()
+            .firstOrNull()
+            ?.getInt(1)
+            ?: 0
+    }
+
     fun profile(member: Member?, user: User): Profile {
         return Profile(
             user.name,
             user.avatarUrl ?: user.defaultAvatarUrl,
             user.timeCreated,
             member?.timeJoined,
+            totalUserMessages(user),
+            totalUserReactions(user),
             userReactions(user),
             userChannelMessages(user)
         )
@@ -440,6 +466,8 @@ data class Profile(
     val avatar: String,
     val created: OffsetDateTime,
     val joined: OffsetDateTime?,
+    val totalMessages: Int,
+    val totalReactions: Int,
     val reactions: List<Pair<String, Int>>,
     val channelMessages: List<Pair<Long, Int>>
 )
