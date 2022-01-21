@@ -14,6 +14,10 @@ suspend fun main() {
             defaultGuild = Snowflake(540214510833893377L)
         }
 
+        errorResponse { _, type ->
+            content = "**Error:** ${type.error.message ?: "Something happened."}"
+        }
+
         extensions {
             add(::PingExtension)
         }
