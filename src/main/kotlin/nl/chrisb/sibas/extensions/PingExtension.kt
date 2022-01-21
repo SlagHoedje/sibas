@@ -1,4 +1,4 @@
-package nl.chrisb.sibas
+package nl.chrisb.sibas.extensions
 
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand

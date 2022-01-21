@@ -3,6 +3,7 @@ package nl.chrisb.sibas
 import com.kotlindiscord.kord.extensions.ExtensibleBot
 import com.kotlindiscord.kord.extensions.utils.env
 import dev.kord.common.entity.Snowflake
+import nl.chrisb.sibas.extensions.PingExtension
 
 suspend fun main() {
     val bot = ExtensibleBot(env("TOKEN")) {
@@ -20,6 +21,7 @@ suspend fun main() {
 
         extensions {
             add(::PingExtension)
+            add(::IndexExtension)
         }
     }
 
