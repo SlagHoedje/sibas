@@ -7,11 +7,11 @@ version = "2.0"
 
 repositories {
     mavenCentral()
-    maven("https://oss.sonatype.org/content/repositories/snapshots")
+    maven("https://maven.kotlindiscord.com/repository/maven-public/")
 }
 
 dependencies {
     implementation(kotlin("stdlib"))
 
-    implementation("dev.kord:kord-core:0.8.0-M8")
+    implementation("com.kotlindiscord.kord.extensions:kord-extensions:1.5.1-RC1")
 }
