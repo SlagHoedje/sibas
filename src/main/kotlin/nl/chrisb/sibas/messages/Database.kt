@@ -2,7 +2,6 @@ package nl.chrisb.sibas.messages
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.dao.id.LongIdTable
-import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 
 object Channels : LongIdTable() {
@@ -12,14 +11,14 @@ object Channels : LongIdTable() {
 
 object Messages : LongIdTable() {
     val channel = reference("channel", Channels)
-    val user = long("user")
+    val user = long("user").nullable()
     val contents = text("contents")
     val timestamp = timestamp("timestamp")
 }
 
 object Reactions : IntIdTable() {
     val message = reference("message", Messages)
-    val emote = long("emote")
+    val emote = long("emote").nullable()
     val name = text("name")
     val count = integer("count")
 }

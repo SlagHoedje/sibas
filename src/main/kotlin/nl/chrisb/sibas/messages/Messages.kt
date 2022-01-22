@@ -19,20 +19,29 @@ suspend fun index(textChannel: TextChannel): Int {
     val messageFlow = storedChannel.lastUpdatedMessageId
         ?.let { textChannel.getMessagesAfter(Snowflake(it.value)) }
         ?: textChannel.messages
-    var count = 0
+    var messageCount = 0
 
     messageFlow
         .chunked(100)
         .collect { messages ->
-            count += messages.size
+            messageCount += messages.size
 
             transaction {
                 messages.forEach {
-                    Message.new(it.longId) {
+                    val storedMessage = Message.new(it.longId) {
                         channel = storedChannel
-                        user = it.author?.longId ?: -1
+                        user = it.author?.longId
                         contents = it.content
                         timestamp = it.timestamp.toJavaInstant()
+                    }
+
+                    it.reactions.forEach {
+                        Reaction.new {
+                            message = storedMessage
+                            emote = it.id?.value?.toLong()
+                            name = it.emoji.name
+                            count = it.count
+                        }
                     }
                 }
 
@@ -40,5 +49,5 @@ suspend fun index(textChannel: TextChannel): Int {
             }
         }
 
-    return count
+    return messageCount
 }
