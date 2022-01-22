@@ -2,13 +2,13 @@ package nl.chrisb.sibas.extensions
 
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
+import com.kotlindiscord.kord.extensions.types.edit
+import com.kotlindiscord.kord.extensions.types.respond
 import com.kotlindiscord.kord.extensions.utils.botHasPermissions
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.channel.TextChannel
 import kotlinx.coroutines.flow.mapNotNull
-import nl.chrisb.sibas.messages.Message
 import nl.chrisb.sibas.messages.index
-import org.jetbrains.exposed.sql.transactions.transaction
 
 class IndexExtension : Extension() {
     override val name = "index"
@@ -19,6 +19,8 @@ class IndexExtension : Extension() {
             description = "Index all new messages since the last index"
 
             action {
+                respond { content = "Indexing all channels..." }
+
                 guild?.let { g ->
                     val textChannels = g.channels.mapNotNull { it as? TextChannel }
                     var total = 0
@@ -28,10 +30,17 @@ class IndexExtension : Extension() {
                             return@collect
                         }
 
-                        total += index(textChannel)
+                        edit { content = "Indexing ${textChannel.mention}... _(0 messages so far, $total total)_" }
+
+                        total += index(textChannel, chunkSize = 500) {
+                            edit {
+                                content =
+                                    "Indexing ${textChannel.mention}... _($it messages so far, ${total + it} total)_"
+                            }
+                        }
                     }
 
-                    println("total=$total, sql_total=${transaction { Message.count() }}")
+                    edit { content = "Finished indexing all channels. _($total new messages indexed)_" }
                 } ?: throw Exception("You can't index here, as this is not a guild.")
             }
         }
