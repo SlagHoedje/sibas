@@ -7,6 +7,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.toJavaInstant
 import nl.chrisb.sibas.chunked
 import nl.chrisb.sibas.longId
+import nl.chrisb.sibas.toLong
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -27,7 +28,7 @@ suspend fun index(
         val storedChannel = transaction {
             Channel.findById(textChannel.longId)
                 ?: Channel.new(textChannel.longId) {
-                    guild = textChannel.guildId.value.toLong()
+                    guild = textChannel.guildId.toLong()
                 }
         }
 
@@ -53,7 +54,7 @@ suspend fun index(
                         it.reactions.forEach {
                             Reaction.new {
                                 message = storedMessage
-                                emote = it.id?.value?.toLong()
+                                emote = it.id?.toLong()
                                 name = it.emoji.name
                                 count = it.count
                             }
