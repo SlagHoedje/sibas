@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.toJavaInstant
+import mu.KotlinLogging
 import nl.chrisb.sibas.chunked
 import nl.chrisb.sibas.longId
 import nl.chrisb.sibas.toLong
@@ -16,12 +17,14 @@ import kotlin.concurrent.fixedRateTimer
 private val locks = mutableMapOf<Long, Mutex>()
 private val scheduledToIndex = mutableSetOf<TextChannel>()
 
+val logger = KotlinLogging.logger { }
+
 fun startCheckingForIndex() {
     fixedRateTimer("Periodic indexer", period = 1000 * 60) {
         runBlocking {
             if (scheduledToIndex.isNotEmpty()) {
                 val total = scheduledToIndex.sumOf { index(it) }
-                println("Periodically indexed ${scheduledToIndex.joinToString { "#${it.name}" }}. ($total new messages)")
+                logger.info { "Periodically indexed ${scheduledToIndex.joinToString { "#${it.name}" }}. ($total new messages)" }
                 scheduledToIndex.clear()
             }
         }

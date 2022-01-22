@@ -12,11 +12,14 @@ import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.message.*
 import kotlinx.coroutines.flow.mapNotNull
+import mu.KotlinLogging
 import nl.chrisb.sibas.messages.*
 import nl.chrisb.sibas.toLong
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
+
+val iLogger = KotlinLogging.logger { }
 
 class IndexExtension : Extension() {
     override val name = "index"
@@ -32,6 +35,8 @@ class IndexExtension : Extension() {
             initialResponse { content = "Indexing all channels..." }
 
             action {
+                iLogger.info { "Manually indexing all channels..." }
+
                 guild?.let { g ->
                     val textChannels = g.channels.mapNotNull { it as? TextChannel }
                     var total = 0
