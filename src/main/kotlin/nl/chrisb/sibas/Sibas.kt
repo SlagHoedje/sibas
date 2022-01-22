@@ -4,9 +4,13 @@ import com.kotlindiscord.kord.extensions.ExtensibleBot
 import com.kotlindiscord.kord.extensions.utils.env
 import com.kotlindiscord.kord.extensions.utils.envOrNull
 import dev.kord.common.entity.Snowflake
+import dev.kord.core.supplier.EntitySupplier
+import dev.kord.core.supplier.EntitySupplyStrategy
 import nl.chrisb.sibas.extensions.IndexExtension
 import nl.chrisb.sibas.extensions.PingExtension
-import nl.chrisb.sibas.messages.*
+import nl.chrisb.sibas.messages.Channels
+import nl.chrisb.sibas.messages.Messages
+import nl.chrisb.sibas.messages.Reactions
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.StdOutSqlLogger
@@ -28,6 +32,11 @@ suspend fun main() {
     }
 
     val bot = ExtensibleBot(env("TOKEN")) {
+        cache {
+            @Suppress("UNCHECKED_CAST")
+            defaultStrategy = EntitySupplyStrategy.rest as EntitySupplyStrategy<EntitySupplier>
+        }
+
         presence {
             competing("Sibas vs Selmon")
         }

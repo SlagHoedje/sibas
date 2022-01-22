@@ -7,13 +7,14 @@ import org.jetbrains.exposed.sql.javatime.timestamp
 
 object Channels : LongIdTable() {
     val guild = long("guild")
-    val lastUpdate = timestamp("last_update")
+    val lastUpdatedMessage = reference("last_updated_message", Messages).nullable()
 }
 
 object Messages : LongIdTable() {
     val channel = reference("channel", Channels)
     val user = long("user")
     val contents = text("contents")
+    val timestamp = timestamp("timestamp")
 }
 
 object Reactions : IntIdTable() {
