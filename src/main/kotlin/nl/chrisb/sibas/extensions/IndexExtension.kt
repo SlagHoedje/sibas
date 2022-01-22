@@ -3,7 +3,6 @@ package nl.chrisb.sibas.extensions
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
 import com.kotlindiscord.kord.extensions.types.edit
-import com.kotlindiscord.kord.extensions.types.respond
 import com.kotlindiscord.kord.extensions.utils.botHasPermissions
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.channel.TextChannel
@@ -18,9 +17,9 @@ class IndexExtension : Extension() {
             name = "index"
             description = "Index all new messages since the last index"
 
-            action {
-                respond { content = "Indexing all channels..." }
+            initialResponse { content = "Indexing all channels..." }
 
+            action {
                 guild?.let { g ->
                     val textChannels = g.channels.mapNotNull { it as? TextChannel }
                     var total = 0
