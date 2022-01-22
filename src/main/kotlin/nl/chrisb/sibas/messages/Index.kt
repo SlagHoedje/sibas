@@ -2,6 +2,7 @@ package nl.chrisb.sibas.messages
 
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.entity.channel.TextChannel
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.toJavaInstant
@@ -10,8 +11,26 @@ import nl.chrisb.sibas.longId
 import nl.chrisb.sibas.toLong
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
+import kotlin.concurrent.fixedRateTimer
 
-val locks = mutableMapOf<Long, Mutex>()
+private val locks = mutableMapOf<Long, Mutex>()
+private val scheduledToIndex = mutableSetOf<TextChannel>()
+
+fun startCheckingForIndex() {
+    fixedRateTimer("Periodic indexer", period = 1000 * 60) {
+        runBlocking {
+            if (scheduledToIndex.isNotEmpty()) {
+                val total = scheduledToIndex.sumOf { index(it) }
+                println("Periodically indexed ${scheduledToIndex.joinToString { "#${it.name}" }}. ($total new messages)")
+                scheduledToIndex.clear()
+            }
+        }
+    }
+}
+
+fun scheduleForIndex(textChannel: TextChannel) {
+    scheduledToIndex.add(textChannel)
+}
 
 suspend fun index(
     textChannel: TextChannel,

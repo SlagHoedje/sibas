@@ -1,10 +1,13 @@
 package nl.chrisb.sibas.messages
 
+import dev.kord.core.entity.ReactionEmoji
+import nl.chrisb.sibas.toLong
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.and
 
 class Channel(id: EntityID<Long>) : LongEntity(id) {
     companion object : LongEntityClass<Channel>(Channels)
@@ -34,3 +37,9 @@ class Reaction(id: EntityID<Int>) : IntEntity(id) {
     var name by Reactions.name
     var count by Reactions.count
 }
+
+fun IntEntityClass<Reaction>.findByEmoji(messageId: Long, emoji: ReactionEmoji) = find {
+    (Reactions.message eq EntityID(messageId, Messages)) and
+            (Reactions.name eq emoji.name) and
+            (Reactions.emote eq (emoji as? ReactionEmoji.Custom)?.id?.toLong())
+}.firstOrNull()
