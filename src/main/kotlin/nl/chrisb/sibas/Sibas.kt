@@ -13,8 +13,6 @@ import nl.chrisb.sibas.messages.Messages
 import nl.chrisb.sibas.messages.Reactions
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.StdOutSqlLogger
-import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.transactions.transaction
 
 suspend fun main() {
@@ -26,8 +24,6 @@ suspend fun main() {
     )
 
     transaction {
-        addLogger(StdOutSqlLogger)
-
         SchemaUtils.create(Channels, Messages, Reactions)
     }
 
