@@ -50,8 +50,11 @@ suspend fun index(
                     }
                 }
 
-                storedChannel.lastUpdatedMessageId = EntityID(messages.last().longId, Messages)
+                storedChannel.lastUpdatedMessageId =
+                    EntityID(messages.maxByOrNull { it.timestamp }!!.longId, Messages)
             }
+
+            progressCallback(messageCount)
         }
 
     return messageCount
