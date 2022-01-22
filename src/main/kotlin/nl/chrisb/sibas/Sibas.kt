@@ -8,6 +8,7 @@ import dev.kord.core.supplier.EntitySupplier
 import dev.kord.core.supplier.EntitySupplyStrategy
 import nl.chrisb.sibas.extensions.IndexExtension
 import nl.chrisb.sibas.extensions.PingExtension
+import nl.chrisb.sibas.extensions.StatsExtension
 import nl.chrisb.sibas.messages.Channels
 import nl.chrisb.sibas.messages.Messages
 import nl.chrisb.sibas.messages.Reactions
@@ -49,6 +50,7 @@ suspend fun main() {
         extensions {
             add(::PingExtension)
             add(::IndexExtension)
+            add(::StatsExtension)
         }
     }
 
