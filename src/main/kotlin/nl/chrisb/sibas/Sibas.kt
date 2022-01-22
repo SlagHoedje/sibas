@@ -46,6 +46,7 @@ suspend fun main() {
         }
 
         errorResponse { _, type ->
+            type.error.printStackTrace()
             content = "**Error:** ${type.error.message ?: "Something happened."}"
         }
 
