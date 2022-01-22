@@ -8,7 +8,12 @@ import nl.chrisb.sibas.longId
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 
-suspend fun index(textChannel: TextChannel): Int {
+// TODO: Make sure this function runs properly with multiple threads.
+suspend fun index(
+    textChannel: TextChannel,
+    chunkSize: Int = 500,
+    progressCallback: suspend (count: Int) -> Unit = {}
+): Int {
     val storedChannel = transaction {
         Channel.findById(textChannel.longId)
             ?: Channel.new(textChannel.longId) {
@@ -22,7 +27,7 @@ suspend fun index(textChannel: TextChannel): Int {
     var messageCount = 0
 
     messageFlow
-        .chunked(100)
+        .chunked(chunkSize)
         .collect { messages ->
             messageCount += messages.size
 
