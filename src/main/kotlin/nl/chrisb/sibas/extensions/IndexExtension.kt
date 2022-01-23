@@ -13,6 +13,7 @@ import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.message.*
 import kotlinx.coroutines.flow.mapNotNull
 import mu.KotlinLogging
+import nl.chrisb.sibas.isAdmin
 import nl.chrisb.sibas.messages.*
 import nl.chrisb.sibas.toLong
 import org.jetbrains.exposed.dao.id.EntityID
@@ -31,6 +32,8 @@ class IndexExtension : Extension() {
         publicSlashCommand {
             name = "index"
             description = "Index all new messages since the last index"
+
+            check { isAdmin() }
 
             initialResponse { content = "Indexing all channels..." }
 
