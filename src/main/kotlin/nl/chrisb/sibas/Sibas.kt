@@ -46,9 +46,13 @@ suspend fun main() {
             defaultGuild = Snowflake(540214510833893377L)
         }
 
-        errorResponse { _, type ->
-            type.error.printStackTrace()
-            content = "**Error:** ${type.error.message ?: "Something happened."}"
+        errorResponse { message, type ->
+            content = if (message.startsWith("**Error:**")) {
+                message
+            } else {
+                type.error.printStackTrace()
+                "**Error:** ${type.error.message ?: "Something happened."}"
+            }
         }
 
         extensions {
