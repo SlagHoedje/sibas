@@ -43,7 +43,9 @@ suspend fun main() {
         }
 
         applicationCommands {
-            defaultGuild = Snowflake(540214510833893377L)
+            envOrNull("DEFAULT_GUILD_ID")?.let {
+                defaultGuild = Snowflake(it.toLong())
+            }
         }
 
         errorResponse { message, type ->
