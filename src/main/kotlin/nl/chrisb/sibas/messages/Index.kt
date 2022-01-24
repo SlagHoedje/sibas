@@ -10,6 +10,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.toJavaInstant
 import mu.KotlinLogging
 import nl.chrisb.sibas.chunked
+import nl.chrisb.sibas.extensions.iLogger
 import nl.chrisb.sibas.longId
 import nl.chrisb.sibas.toLong
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -101,6 +102,7 @@ suspend fun index(
         }
     } catch (e: KtorRequestException) {
         if (e.error?.code == JsonErrorCode.InvalidWebhookToken) {
+            iLogger.warn { "Webhook token expired while indexing channel, restarting..." }
             return messageCount + index(
                 textChannel.guild.getChannel(textChannel.id) as TextChannel,
                 chunkSize
