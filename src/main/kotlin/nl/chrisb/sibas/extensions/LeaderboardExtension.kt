@@ -48,7 +48,7 @@ class LeaderboardExtension : Extension() {
                                         .orderBy(Messages.id.count(), SortOrder.DESC)
                                         .limit(30)
                                         .joinToString("\n") {
-                                            "<#${it[Messages.channel].value}>: ${it[Messages.id.count()].format()}"
+                                            "<#${it[Messages.channel].value}>: ${it[Messages.id.count()].format()} messages"
                                         }.ifEmpty {
                                             "This server does not have any indexed messages yet."
                                         }
@@ -76,7 +76,7 @@ class LeaderboardExtension : Extension() {
                                         .orderBy(Messages.id.count(), SortOrder.DESC)
                                         .limit(30)
                                         .joinToString("\n") {
-                                            "<@${it[Messages.user]}>: ${it[Messages.id.count()].format()}"
+                                            "<@${it[Messages.user]}>: ${it[Messages.id.count()].format()} messages"
                                         }.ifEmpty {
                                             "This server does not have any indexed messages yet."
                                         }

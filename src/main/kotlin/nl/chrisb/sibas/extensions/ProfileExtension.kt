@@ -106,7 +106,7 @@ class ProfileExtension : Extension() {
                                     .limit(15)
                                     .joinToString("\n") {
                                         // TODO: Is there some sort of library function that can mention this for me?
-                                        "<#${it[Messages.channel].value}>: ${it[Messages.id.count()].format()}"
+                                        "<#${it[Messages.channel].value}>: ${it[Messages.id.count()].format()} messages"
                                     }.ifEmpty {
                                         "${member.displayName} has not sent any messages in any indexed channel yet."
                                     }
