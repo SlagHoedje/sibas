@@ -1,5 +1,6 @@
 package nl.chrisb.sibas.extensions
 
+import com.kotlindiscord.kord.extensions.checks.anyGuild
 import com.kotlindiscord.kord.extensions.checks.channelType
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.event
@@ -34,33 +35,32 @@ class IndexExtension : Extension() {
             description = "Index all new messages since the last index"
 
             check { isAdmin() }
+            check { anyGuild() }
 
             initialResponse { content = "Indexing all channels..." }
 
             action {
                 iLogger.info { "Manually indexing all channels..." }
 
-                guild?.let { g ->
-                    val textChannels = g.channels.mapNotNull { it as? TextChannel }
-                    var total = 0
+                val textChannels = guild!!.channels.mapNotNull { it as? TextChannel }
+                var total = 0
 
-                    textChannels.collect { textChannel ->
-                        if (!textChannel.botHasPermissions(Permission.ReadMessageHistory, Permission.ViewChannel)) {
-                            return@collect
-                        }
-
-                        edit { content = "Indexing ${textChannel.mention}... _(0 messages so far, $total total)_" }
-
-                        total += index(textChannel, chunkSize = 500) {
-                            edit {
-                                content =
-                                    "Indexing ${textChannel.mention}... _($it messages so far, ${total + it} total)_"
-                            }
-                        }
+                textChannels.collect { textChannel ->
+                    if (!textChannel.botHasPermissions(Permission.ReadMessageHistory, Permission.ViewChannel)) {
+                        return@collect
                     }
 
-                    edit { content = "Finished indexing all channels. _($total new messages indexed)_" }
-                } ?: throw Exception("You can't index here, as this is not a guild.")
+                    edit { content = "Indexing ${textChannel.mention}... _(0 messages so far, $total total)_" }
+
+                    total += index(textChannel, chunkSize = 500) {
+                        edit {
+                            content =
+                                "Indexing ${textChannel.mention}... _($it messages so far, ${total + it} total)_"
+                        }
+                    }
+                }
+
+                edit { content = "Finished indexing all channels. _($total new messages indexed)_" }
             }
         }
     }
