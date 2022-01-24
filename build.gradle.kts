@@ -1,32 +1,29 @@
 plugins {
-    kotlin("jvm") version "1.5.20"
-    id("application")
+    kotlin("jvm") version "1.5.10"
 }
 
 group = "nl.chrisb"
-version = "1.0-SNAPSHOT"
+version = "2.0"
 
 repositories {
     mavenCentral()
-    maven("https://m2.dv8tion.net/releases")
-    maven("https://jitpack.io/")
+    maven("https://maven.kotlindiscord.com/repository/maven-public/")
 }
 
 dependencies {
     implementation(kotlin("stdlib"))
-    implementation(kotlin("reflect"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.5.1")
 
-    implementation("net.dv8tion:JDA:4.3.0_324")
-    implementation("com.github.minndevelopment:jda-ktx:ea0a1b2")
+    implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.17.1")
+    implementation("io.github.microutils:kotlin-logging-jvm:2.1.20")
 
-    implementation("com.zaxxer:HikariCP:2.3.2")
-    implementation("org.postgresql:postgresql:42.2.23")
+    implementation("com.kotlindiscord.kord.extensions:kord-extensions:1.5.1-RC1")
 
-    implementation("com.github.the-codeboy:Piston4J:0.0.6")
-}
+    implementation("org.jetbrains.exposed:exposed-core:0.37.3")
+    implementation("org.jetbrains.exposed:exposed-dao:0.37.3")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.37.3")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.37.3")
 
-application {
-    mainClass.set("nl.chrisb.sibas.MainKt")
+    implementation("com.h2database:h2:2.1.210")
+    implementation("org.postgresql:postgresql:42.3.1")
+    implementation("mysql:mysql-connector-java:8.0.25")
 }
