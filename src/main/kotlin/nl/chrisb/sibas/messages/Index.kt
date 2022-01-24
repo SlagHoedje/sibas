@@ -2,6 +2,8 @@ package nl.chrisb.sibas.messages
 
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.rest.json.JsonErrorCode
+import dev.kord.rest.request.KtorRequestException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -50,49 +52,61 @@ suspend fun index(
         return 0
     }
 
-    lock.withLock {
-        val storedChannel = transaction {
-            Channel.findById(textChannel.longId)
-                ?: Channel.new(textChannel.longId) {
-                    guild = textChannel.guildId.toLong()
-                }
-        }
+    var messageCount = 0
 
-        val messageFlow = storedChannel.lastUpdatedMessage
-            ?.let { textChannel.getMessagesAfter(Snowflake(it)) }
-            ?: textChannel.messages
-        var messageCount = 0
-
-        messageFlow
-            .chunked(chunkSize)
-            .collect { messages ->
-                messageCount += messages.size
-
-                transaction {
-                    messages.forEach {
-                        val storedMessage = Message.new(it.longId) {
-                            channel = storedChannel
-                            user = it.author?.longId ?: it.webhookId?.toLong()
-                            contents = it.content
-                            timestamp = it.timestamp.toJavaInstant()
-                        }
-
-                        it.reactions.forEach {
-                            Reaction.new {
-                                message = storedMessage
-                                emote = it.id?.toLong()
-                                name = it.emoji.name
-                                count = it.count
-                            }
-                        }
+    try {
+        lock.withLock {
+            val storedChannel = transaction {
+                Channel.findById(textChannel.longId)
+                    ?: Channel.new(textChannel.longId) {
+                        guild = textChannel.guildId.toLong()
                     }
-
-                    storedChannel.lastUpdatedMessage = messages.maxByOrNull { it.timestamp }!!.longId
-                }
-
-                progressCallback(messageCount)
             }
 
-        return messageCount
+            val messageFlow = storedChannel.lastUpdatedMessage
+                ?.let { textChannel.getMessagesAfter(Snowflake(it)) }
+                ?: textChannel.messages
+
+            messageFlow
+                .chunked(chunkSize)
+                .collect { messages ->
+                    messageCount += messages.size
+
+                    transaction {
+                        messages.forEach {
+                            val storedMessage = Message.new(it.longId) {
+                                channel = storedChannel
+                                user = it.author?.longId ?: it.webhookId?.toLong()
+                                contents = it.content
+                                timestamp = it.timestamp.toJavaInstant()
+                            }
+
+                            it.reactions.forEach {
+                                Reaction.new {
+                                    message = storedMessage
+                                    emote = it.id?.toLong()
+                                    name = it.emoji.name
+                                    count = it.count
+                                }
+                            }
+                        }
+
+                        storedChannel.lastUpdatedMessage = messages.maxByOrNull { it.timestamp }!!.longId
+                    }
+
+                    progressCallback(messageCount)
+                }
+
+            return messageCount
+        }
+    } catch (e: KtorRequestException) {
+        if (e.error?.code == JsonErrorCode.InvalidWebhookToken) {
+            return messageCount + index(
+                textChannel.guild.getChannel(textChannel.id) as TextChannel,
+                chunkSize
+            ) { progressCallback(messageCount + it) }
+        } else {
+            throw e
+        }
     }
 }
