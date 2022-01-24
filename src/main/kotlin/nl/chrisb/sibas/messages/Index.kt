@@ -2,16 +2,12 @@ package nl.chrisb.sibas.messages
 
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.entity.channel.TextChannel
-import dev.kord.core.supplier.EntitySupplyStrategy
-import dev.kord.rest.json.JsonErrorCode
-import dev.kord.rest.request.KtorRequestException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.toJavaInstant
 import mu.KotlinLogging
 import nl.chrisb.sibas.chunked
-import nl.chrisb.sibas.extensions.iLogger
 import nl.chrisb.sibas.longId
 import nl.chrisb.sibas.toLong
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -56,60 +52,48 @@ suspend fun index(
 
     var messageCount = 0
 
-    try {
-        lock.withLock {
-            val storedChannel = transaction {
-                Channel.findById(textChannel.longId)
-                    ?: Channel.new(textChannel.longId) {
-                        guild = textChannel.guildId.toLong()
-                    }
-            }
+    lock.withLock {
+        val storedChannel = transaction {
+            Channel.findById(textChannel.longId)
+                ?: Channel.new(textChannel.longId) {
+                    guild = textChannel.guildId.toLong()
+                }
+        }
 
-            val messageFlow = storedChannel.lastUpdatedMessage
-                ?.let { textChannel.getMessagesAfter(Snowflake(it)) }
-                ?: textChannel.messages
+        val messageFlow = storedChannel.lastUpdatedMessage
+            ?.let { textChannel.getMessagesAfter(Snowflake(it)) }
+            ?: textChannel.messages
 
-            messageFlow
-                .chunked(chunkSize)
-                .collect { messages ->
-                    messageCount += messages.size
+        messageFlow
+            .chunked(chunkSize)
+            .collect { messages ->
+                messageCount += messages.size
 
-                    transaction {
-                        messages.forEach {
-                            val storedMessage = Message.new(it.longId) {
-                                channel = storedChannel
-                                user = it.author?.longId ?: it.webhookId?.toLong()
-                                contents = it.content
-                                timestamp = it.timestamp.toJavaInstant()
-                            }
-
-                            it.reactions.forEach {
-                                Reaction.new {
-                                    message = storedMessage
-                                    emote = it.id?.toLong()
-                                    name = it.emoji.name
-                                    count = it.count
-                                }
-                            }
+                transaction {
+                    messages.forEach {
+                        val storedMessage = Message.new(it.longId) {
+                            channel = storedChannel
+                            user = it.author?.longId ?: it.webhookId?.toLong()
+                            contents = it.content
+                            timestamp = it.timestamp.toJavaInstant()
                         }
 
-                        storedChannel.lastUpdatedMessage = messages.maxByOrNull { it.timestamp }!!.longId
+                        it.reactions.forEach {
+                            Reaction.new {
+                                message = storedMessage
+                                emote = it.id?.toLong()
+                                name = it.emoji.name
+                                count = it.count
+                            }
+                        }
                     }
 
-                    progressCallback(messageCount)
+                    storedChannel.lastUpdatedMessage = messages.maxByOrNull { it.timestamp }!!.longId
                 }
 
-            return messageCount
-        }
-    } catch (e: KtorRequestException) {
-        if (e.error?.code == JsonErrorCode.InvalidWebhookToken) {
-            iLogger.warn { "Webhook token expired while indexing channel, restarting..." }
-            return messageCount + index(
-                textChannel.kord.getChannel(textChannel.id, EntitySupplyStrategy.rest) as TextChannel,
-                chunkSize
-            ) { progressCallback(messageCount + it) }
-        } else {
-            throw e
-        }
+                progressCallback(messageCount)
+            }
+
+        return messageCount
     }
 }

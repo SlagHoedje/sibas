@@ -6,12 +6,15 @@ import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.event
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
 import com.kotlindiscord.kord.extensions.types.edit
+import com.kotlindiscord.kord.extensions.types.respond
 import com.kotlindiscord.kord.extensions.utils.botHasPermissions
 import dev.kord.common.entity.ChannelType
 import dev.kord.common.entity.Permission
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.message.*
+import dev.kord.rest.json.JsonErrorCode
+import dev.kord.rest.request.KtorRequestException
 import kotlinx.coroutines.flow.mapNotNull
 import mu.KotlinLogging
 import nl.chrisb.sibas.isAdmin
@@ -45,22 +48,30 @@ class IndexExtension : Extension() {
                 val textChannels = guild!!.channels.mapNotNull { it as? TextChannel }
                 var total = 0
 
-                textChannels.collect { textChannel ->
-                    if (!textChannel.botHasPermissions(Permission.ReadMessageHistory, Permission.ViewChannel)) {
-                        return@collect
-                    }
+                try {
+                    textChannels.collect { textChannel ->
+                        if (!textChannel.botHasPermissions(Permission.ReadMessageHistory, Permission.ViewChannel)) {
+                            return@collect
+                        }
 
-                    edit { content = "Indexing ${textChannel.mention}... _(0 messages so far, $total total)_" }
+                        edit { content = "Indexing ${textChannel.mention}... _(0 messages so far, $total total)_" }
 
-                    total += index(textChannel, chunkSize = 500) {
-                        edit {
-                            content =
-                                "Indexing ${textChannel.mention}... _($it messages so far, ${total + it} total)_"
+                        total += index(textChannel, chunkSize = 500) {
+                            edit {
+                                content =
+                                    "Indexing ${textChannel.mention}... _($it messages so far, ${total + it} total)_"
+                            }
                         }
                     }
-                }
 
-                edit { content = "Finished indexing all channels. _($total new messages indexed)_" }
+                    edit { content = "Finished indexing all channels. _($total new messages indexed)_" }
+                } catch (e: KtorRequestException) {
+                    if (e.error?.code == JsonErrorCode.InvalidWebhookToken) {
+                        respond { content = "..." }
+                    } else {
+                        throw e
+                    }
+                }
             }
         }
     }
