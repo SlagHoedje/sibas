@@ -11,6 +11,18 @@ import dev.kord.core.entity.Entity
 import dev.kord.core.event.Event
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.text.DecimalFormat
+
+val decimalFormat = DecimalFormat("#,###.##")
+
+fun Int.format(): String = decimalFormat.format(this)
+fun Long.format(): String = decimalFormat.format(this)
+
+fun String.possessive() = if (this.endsWith("s")) {
+    "$this'"
+} else {
+    "$this's"
+}
 
 val Entity.longId
     get() = id.toLong()
