@@ -90,6 +90,21 @@ class ProfileExtension : Extension() {
                                         "${member.displayName} has not received any reactions yet."
                                     }
                             }
+
+                            field("Messages sent") {
+                                Messages
+                                    .join(Channels, JoinType.INNER) { Messages.channel eq Channels.id }
+                                    .slice(Messages.channel, Messages.id.count())
+                                    .select { (Messages.user eq member.longId) and (Channels.guild eq guild!!.longId) }
+                                    .groupBy(Messages.channel)
+                                    .orderBy(Messages.id.count(), SortOrder.DESC)
+                                    .joinToString("\n") {
+                                        // TODO: Is there some sort of library function that can mention this for me?
+                                        "<#${it[Messages.channel].value}>: ${it[Messages.id.count()].format()}"
+                                    }.ifEmpty {
+                                        "${member.displayName} has not sent any messages in any indexed channel yet."
+                                    }
+                            }
                         }
                     }
                 }
