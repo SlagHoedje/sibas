@@ -86,7 +86,11 @@ class ProfileExtension : Extension() {
                                             ?.let { ReactionEmoji.Custom(Snowflake(it), name, false) }
                                             ?: ReactionEmoji.Unicode(name)
 
-                                        "${emoji.mention} (${emoji.name}): ${count.format()}"
+                                        if (emoji is ReactionEmoji.Unicode) {
+                                            "${emoji.mention}: ${count.format()}"
+                                        } else {
+                                            "${emoji.mention} (${emoji.name}): ${count.format()}"
+                                        }
                                     }.ifEmpty {
                                         "${member.displayName} has not received any reactions yet."
                                     }
