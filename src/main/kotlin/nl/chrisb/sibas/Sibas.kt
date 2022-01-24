@@ -8,10 +8,7 @@ import dev.kord.core.event.gateway.ReadyEvent
 import dev.kord.core.supplier.EntitySupplier
 import dev.kord.core.supplier.EntitySupplyStrategy
 import mu.KotlinLogging
-import nl.chrisb.sibas.extensions.IndexExtension
-import nl.chrisb.sibas.extensions.PingExtension
-import nl.chrisb.sibas.extensions.ProfileExtension
-import nl.chrisb.sibas.extensions.StatsExtension
+import nl.chrisb.sibas.extensions.*
 import nl.chrisb.sibas.messages.Channels
 import nl.chrisb.sibas.messages.Messages
 import nl.chrisb.sibas.messages.Reactions
@@ -63,6 +60,7 @@ suspend fun main() {
             add(::IndexExtension)
             add(::StatsExtension)
             add(::ProfileExtension)
+            add(::LeaderboardExtension)
         }
     }
 
