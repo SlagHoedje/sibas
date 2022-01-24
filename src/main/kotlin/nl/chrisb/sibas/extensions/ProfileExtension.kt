@@ -13,7 +13,7 @@ import dev.kord.rest.builder.message.create.embed
 import kotlinx.datetime.toJavaInstant
 import nl.chrisb.sibas.format
 import nl.chrisb.sibas.longId
-import nl.chrisb.sibas.messages.Message
+import nl.chrisb.sibas.messages.Channels
 import nl.chrisb.sibas.messages.Messages
 import nl.chrisb.sibas.messages.Reactions
 import nl.chrisb.sibas.possessive
@@ -50,10 +50,14 @@ class ProfileExtension : Extension() {
 
                         transaction {
                             field("Statistics") {
-                                val messages = Message.count(Op.build { Messages.user eq member.longId })
+                                val messages = Messages
+                                    .join(Channels, JoinType.INNER) { Messages.channel eq Channels.id }
+                                    .select { (Messages.user eq member.longId) and (Channels.guild eq guild!!.longId) }
+                                    .count()
                                 val reactions = Messages
                                     .join(Reactions, JoinType.INNER) { Messages.id eq Reactions.message }
-                                    .select { Messages.user eq member.longId }
+                                    .join(Channels, JoinType.INNER) { Messages.channel eq Channels.id }
+                                    .select { (Messages.user eq member.longId) and (Channels.guild eq guild!!.longId) }
                                     .count()
 
                                 """
@@ -67,8 +71,9 @@ class ProfileExtension : Extension() {
                             field("Reactions received") {
                                 Messages
                                     .join(Reactions, JoinType.INNER) { Messages.id eq Reactions.message }
+                                    .join(Channels, JoinType.INNER) { Messages.channel eq Channels.id }
                                     .slice(Reactions.emote, Reactions.name, Reactions.count.sum())
-                                    .select { Messages.user eq member.longId }
+                                    .select { (Messages.user eq member.longId) and (Channels.guild eq guild!!.longId) }
                                     .groupBy(Reactions.emote, Reactions.name)
                                     .orderBy(Reactions.count.sum(), SortOrder.DESC_NULLS_LAST)
                                     .joinToString("\n") { row ->
