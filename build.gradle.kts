@@ -1,5 +1,7 @@
 plugins {
+    application
     kotlin("jvm") version "1.5.10"
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 group = "nl.chrisb"
@@ -26,4 +28,8 @@ dependencies {
     implementation("com.h2database:h2:2.1.210")
     implementation("org.postgresql:postgresql:42.3.1")
     implementation("mysql:mysql-connector-java:8.0.25")
+}
+
+application {
+    mainClass.set("nl.chrisb.sibas.SibasKt")
 }
