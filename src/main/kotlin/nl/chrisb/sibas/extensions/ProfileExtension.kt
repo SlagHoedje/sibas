@@ -76,6 +76,7 @@ class ProfileExtension : Extension() {
                                     .select { (Messages.user eq member.longId) and (Channels.guild eq guild!!.longId) }
                                     .groupBy(Reactions.emote, Reactions.name)
                                     .orderBy(Reactions.count.sum(), SortOrder.DESC_NULLS_LAST)
+                                    .limit(15)
                                     .joinToString("\n") { row ->
                                         val name = row[Reactions.name]
                                         val emote = row[Reactions.emote]
@@ -98,6 +99,7 @@ class ProfileExtension : Extension() {
                                     .select { (Messages.user eq member.longId) and (Channels.guild eq guild!!.longId) }
                                     .groupBy(Messages.channel)
                                     .orderBy(Messages.id.count(), SortOrder.DESC)
+                                    .limit(15)
                                     .joinToString("\n") {
                                         // TODO: Is there some sort of library function that can mention this for me?
                                         "<#${it[Messages.channel].value}>: ${it[Messages.id.count()].format()}"
