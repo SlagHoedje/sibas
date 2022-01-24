@@ -2,6 +2,7 @@ package nl.chrisb.sibas.messages
 
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.core.supplier.EntitySupplyStrategy
 import dev.kord.rest.json.JsonErrorCode
 import dev.kord.rest.request.KtorRequestException
 import kotlinx.coroutines.runBlocking
@@ -104,7 +105,7 @@ suspend fun index(
         if (e.error?.code == JsonErrorCode.InvalidWebhookToken) {
             iLogger.warn { "Webhook token expired while indexing channel, restarting..." }
             return messageCount + index(
-                textChannel.guild.getChannel(textChannel.id) as TextChannel,
+                textChannel.kord.getChannel(textChannel.id, EntitySupplyStrategy.rest) as TextChannel,
                 chunkSize
             ) { progressCallback(messageCount + it) }
         } else {
