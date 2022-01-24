@@ -77,7 +77,10 @@ class IndexExtension : Extension() {
             action {
                 val event = event
                 transaction {
-                    Message.findById(event.messageId.toLong())?.delete()
+                    Message.findById(event.messageId.toLong())?.let { message ->
+                        message.reactions.forEach { it.delete() }
+                        message.delete()
+                    }
                 }
             }
         }
@@ -86,8 +89,11 @@ class IndexExtension : Extension() {
             action {
                 val event = event
                 transaction {
-                    event.messageIds.forEach {
-                        Message.findById(it.toLong())?.delete()
+                    event.messageIds.forEach { messageId ->
+                        Message.findById(messageId.toLong())?.let { message ->
+                            message.reactions.forEach { it.delete() }
+                            message.delete()
+                        }
                     }
                 }
             }

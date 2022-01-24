@@ -10,7 +10,6 @@ import mu.KotlinLogging
 import nl.chrisb.sibas.chunked
 import nl.chrisb.sibas.longId
 import nl.chrisb.sibas.toLong
-import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.concurrent.fixedRateTimer
 
@@ -59,8 +58,8 @@ suspend fun index(
                 }
         }
 
-        val messageFlow = storedChannel.lastUpdatedMessageId
-            ?.let { textChannel.getMessagesAfter(Snowflake(it.value)) }
+        val messageFlow = storedChannel.lastUpdatedMessage
+            ?.let { textChannel.getMessagesAfter(Snowflake(it)) }
             ?: textChannel.messages
         var messageCount = 0
 
@@ -88,8 +87,7 @@ suspend fun index(
                         }
                     }
 
-                    storedChannel.lastUpdatedMessageId =
-                        EntityID(messages.maxByOrNull { it.timestamp }!!.longId, Messages)
+                    storedChannel.lastUpdatedMessage = messages.maxByOrNull { it.timestamp }!!.longId
                 }
 
                 progressCallback(messageCount)

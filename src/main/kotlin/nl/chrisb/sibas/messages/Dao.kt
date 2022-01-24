@@ -13,7 +13,7 @@ class Channel(id: EntityID<Long>) : LongEntity(id) {
     companion object : LongEntityClass<Channel>(Channels)
 
     var guild by Channels.guild
-    var lastUpdatedMessageId by Channels.lastUpdatedMessage
+    var lastUpdatedMessage by Channels.lastUpdatedMessage
 
     val messages by Message referrersOn Messages.channel
 }

@@ -6,7 +6,7 @@ import org.jetbrains.exposed.sql.javatime.timestamp
 
 object Channels : LongIdTable() {
     val guild = long("guild")
-    val lastUpdatedMessage = reference("last_updated_message", Messages).nullable()
+    val lastUpdatedMessage = long("last_updated_message").nullable()
 }
 
 object Messages : LongIdTable() {
