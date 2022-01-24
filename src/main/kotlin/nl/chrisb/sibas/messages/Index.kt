@@ -22,11 +22,16 @@ val logger = KotlinLogging.logger { }
 fun startCheckingForIndex() {
     fixedRateTimer("Periodic indexer", period = 1000 * 60) {
         runBlocking {
-            if (scheduledToIndex.isNotEmpty()) {
-                val total = scheduledToIndex.sumOf { index(it) }
-                logger.info { "Periodically indexed ${scheduledToIndex.joinToString { "#${it.name}" }}. ($total new messages)" }
-                scheduledToIndex.clear()
+            val channels = transaction {
+                scheduledToIndex.filter { Channel.findById(it.longId) != null }
             }
+
+            if (channels.isNotEmpty()) {
+                val total = channels.sumOf { index(it) }
+                logger.info { "Periodically indexed ${channels.joinToString { "#${it.name}" }}. ($total new messages)" }
+            }
+
+            scheduledToIndex.clear()
         }
     }
 }
