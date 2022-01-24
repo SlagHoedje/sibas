@@ -24,4 +24,6 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-java-time:0.37.3")
 
     implementation("com.h2database:h2:2.1.210")
+    implementation("org.postgresql:postgresql:42.3.1")
+    implementation("mysql:mysql-connector-java:8.0.25")
 }

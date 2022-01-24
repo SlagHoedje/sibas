@@ -21,7 +21,6 @@ val logger = KotlinLogging.logger { }
 suspend fun main() {
     Database.connect(
         env("DB_URL"),
-        driver = env("DB_DRIVER"),
         user = envOrNull("DB_USER") ?: "",
         password = envOrNull("DB_PASS") ?: ""
     )
