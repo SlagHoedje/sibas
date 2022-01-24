@@ -72,7 +72,7 @@ suspend fun index(
                     messages.forEach {
                         val storedMessage = Message.new(it.longId) {
                             channel = storedChannel
-                            user = it.author?.longId
+                            user = it.author?.longId ?: it.webhookId?.toLong()
                             contents = it.content
                             timestamp = it.timestamp.toJavaInstant()
                         }
