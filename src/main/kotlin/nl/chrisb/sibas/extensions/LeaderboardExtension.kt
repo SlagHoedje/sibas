@@ -87,6 +87,41 @@ class LeaderboardExtension : Extension() {
                 }
             }
 
+            listOf("upvote", "downvote").forEach { reaction ->
+                group("${reaction}s") {
+                    description = "Show various leaderboards about amount of ${reaction}s."
+
+                    publicSubCommand {
+                        name = "user"
+                        description = "Show which users have the most ${reaction}s."
+
+                        action {
+                            respond {
+                                embed {
+                                    title = "Users with most ${reaction}s"
+
+                                    transaction {
+                                        description = Reactions
+                                            .join(Messages, JoinType.INNER) { Messages.id eq Reactions.message }
+                                            .join(Channels, JoinType.INNER) { Messages.channel eq Channels.id }
+                                            .slice(Messages.user, Reactions.count.sum())
+                                            .select { (Channels.guild eq guild!!.longId) and (Reactions.name eq reaction) }
+                                            .groupBy(Messages.user)
+                                            .orderBy(Reactions.count.sum(), SortOrder.DESC_NULLS_LAST)
+                                            .limit(30)
+                                            .joinToString("\n") {
+                                                "<@${it[Messages.user]}>: ${it[Reactions.count.sum()]?.format() ?: 0}"
+                                            }.ifEmpty {
+                                                "This server does not have any indexed messages yet."
+                                            }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             publicSubCommand {
                 name = "reactions"
                 description = "Show which reactions have been most reacted with."
@@ -119,6 +154,8 @@ class LeaderboardExtension : Extension() {
                                         } else {
                                             "${emoji.mention} (${emoji.name}): ${count.format()}"
                                         }
+                                    }.ifEmpty {
+                                        "This server does not have any indexed reactions yet."
                                     }
                             }
                         }
