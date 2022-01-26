@@ -3,6 +3,8 @@ package nl.chrisb.sibas.extensions
 import com.kotlindiscord.kord.extensions.checks.anyGuild
 import com.kotlindiscord.kord.extensions.commands.Arguments
 import com.kotlindiscord.kord.extensions.commands.converters.impl.optionalUser
+import com.kotlindiscord.kord.extensions.commands.converters.impl.string
+import com.kotlindiscord.kord.extensions.commands.converters.impl.user
 import com.kotlindiscord.kord.extensions.extensions.Extension
 import com.kotlindiscord.kord.extensions.extensions.publicSlashCommand
 import com.kotlindiscord.kord.extensions.types.respond
@@ -116,9 +118,73 @@ class ProfileExtension : Extension() {
                 }
             }
         }
+
+        publicSlashCommand(::WhereReactionArgs) {
+            name = "wherereaction"
+            description = "Locate which messages have a reaction that seemingly came out of nowhere."
+
+            check { anyGuild() }
+
+            action {
+                val member = arguments.user.asMember(guild!!.id)
+                val reaction = arguments.reaction
+                    .replace(Regex("<a?:([A-Za-z0-9_]+):(\\d+)>")) { it.groups[1]?.value ?: it.value }
+                    .replace(Regex(":([A-Za-z0-9_]+):")) { it.groups[1]?.value ?: it.value }
+
+                respond {
+                    embed {
+                        title = "Top messages with reaction $reaction for ${member.displayName}"
+
+                        transaction {
+                            description = Messages
+                                .join(Reactions, JoinType.INNER) { Messages.id eq Reactions.message }
+                                .join(Channels, JoinType.INNER) { Messages.channel eq Channels.id }
+                                .slice(
+                                    Messages.channel,
+                                    Messages.id,
+                                    Messages.timestamp,
+                                    Messages.contents,
+                                    Reactions.count.sum()
+                                )
+                                .select {
+                                    (Messages.user eq member.longId) and
+                                            (Channels.guild eq guild!!.longId) and
+                                            ((Reactions.name eq reaction) or (Reactions.name eq ":$reaction:"))
+                                }
+                                .groupBy(Messages.id)
+                                .orderBy(Reactions.count.sum(), SortOrder.DESC_NULLS_LAST)
+                                .limit(15)
+                                .joinToString("\n\n") { row ->
+                                    val link =
+                                        "https://discord.com/channels/${guild!!.longId}/${row[Messages.channel].value}/${row[Messages.id].value}"
+
+                                    val head = "[Link]($link) - <t:${row[Messages.timestamp].epochSecond}:D>" +
+                                            " in <#${row[Messages.channel].value}>" +
+                                            " with ${row[Reactions.count.sum()]} ${reaction}s"
+
+                                    val content = if (row[Messages.contents].isNotEmpty()) {
+                                        "\n${row[Messages.contents].lines().joinToString("\n") { "> $it" }}"
+                                    } else {
+                                        ""
+                                    }
+
+                                    "$head$content"
+                                }.ifEmpty {
+                                    "${member.displayName} has not received any of those reactions yet."
+                                }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     inner class ProfileArgs : Arguments() {
         val target by optionalUser("target", "The person you want to check the profile of.")
+    }
+
+    inner class WhereReactionArgs : Arguments() {
+        val reaction by string("reaction", "The reaction you want to locate.")
+        val user by user("user", "The person you want to locate the reaction on.")
     }
 }
