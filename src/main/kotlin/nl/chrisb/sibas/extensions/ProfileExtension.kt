@@ -144,7 +144,7 @@ class ProfileExtension : Extension() {
                                     Messages.id,
                                     Messages.timestamp,
                                     Messages.contents,
-                                    Reactions.count.sum()
+                                    Reactions.count.max()
                                 )
                                 .select {
                                     (Messages.user eq member.longId) and
@@ -152,7 +152,7 @@ class ProfileExtension : Extension() {
                                             ((Reactions.name eq reaction) or (Reactions.name eq ":$reaction:"))
                                 }
                                 .groupBy(Messages.id)
-                                .orderBy(Reactions.count.sum(), SortOrder.DESC_NULLS_LAST)
+                                .orderBy(Reactions.count.max(), SortOrder.DESC_NULLS_LAST)
                                 .limit(15)
                                 .joinToString("\n\n") { row ->
                                     val link =
@@ -160,7 +160,7 @@ class ProfileExtension : Extension() {
 
                                     val head = "[Link]($link) - <t:${row[Messages.timestamp].epochSecond}:D>" +
                                             " in <#${row[Messages.channel].value}>" +
-                                            " with ${row[Reactions.count.sum()]} ${reaction}s"
+                                            " with ${row[Reactions.count.max()]} ${reaction}s"
 
                                     val content = if (row[Messages.contents].isNotEmpty()) {
                                         "\n${row[Messages.contents].lines().joinToString("\n") { "> $it" }}"
