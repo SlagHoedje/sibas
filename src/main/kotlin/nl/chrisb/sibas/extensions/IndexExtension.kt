@@ -67,6 +67,7 @@ class IndexExtension : Extension() {
                     edit { content = "Finished indexing all channels. _($total new messages indexed)_" }
                 } catch (e: KtorRequestException) {
                     if (e.error?.code == JsonErrorCode.InvalidWebhookToken) {
+                        iLogger.warn { "Interaction webhook token expired, creating new message..." }
                         respond { content = "..." }
                     } else {
                         throw e
