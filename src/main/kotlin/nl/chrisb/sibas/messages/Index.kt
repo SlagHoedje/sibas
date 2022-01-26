@@ -27,7 +27,7 @@ fun startCheckingForIndex() {
 
             if (channels.isNotEmpty()) {
                 val total = channels.sumOf { index(it) }
-                logger.info { "Periodically indexed ${channels.joinToString { "#${it.name}" }}. ($total new messages)" }
+                logger.debug { "Periodically indexed ${channels.joinToString { "#${it.name}" }}. ($total new messages)" }
             }
 
             scheduledToIndex.clear()
